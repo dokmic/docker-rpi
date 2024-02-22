@@ -1,0 +1,3 @@
+proc /proc proc defaults 0 0
+boot /boot/firmware 9p cache=mmap,msize=104857600,posixacl,trans=virtio,version=9p2000.L 0 2
+root / 9p cache=mmap,msize=104857600,posixacl,trans=virtio,version=9p2000.L 0 1

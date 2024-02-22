@@ -1,0 +1,18 @@
+#!/bin/sh
+
+config_kernel=/sd/boot/firmware/cmdline.txt
+
+qemu-system-aarch64 \
+  -serial mon:stdio \
+  -nographic \
+  -no-reboot \
+  -machine virt \
+  -cpu cortex-a72 \
+  -m 1G \
+  -smp 4 \
+  -device virtio-net-device,netdev=net0 \
+  -netdev user,id=net0 \
+  -kernel /sd/boot/firmware/kernel8.img \
+  -virtfs local,id=boot,mount_tag=boot,multidevs=remap,path=/sd/boot/firmware,security_model=none \
+  -virtfs local,id=root,mount_tag=root,multidevs=remap,path=/sd,security_model=none \
+  -append "$(cat "$config_kernel")"

@@ -83,4 +83,9 @@ COPY --from=kernel /sd /sd
 
 FROM alpine:latest
 
+RUN apk add --no-cache qemu-system-aarch64
+
 COPY --from=image /sd /sd
+COPY /rootfs /
+
+CMD ["rpi"]

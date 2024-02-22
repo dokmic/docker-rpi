@@ -1,0 +1,1 @@
+console=ttyAMA0,115200 init=/usr/lib/raspberrypi-sys-mods/firstboot panic=-1 root=root rootflags=cache=mmap,msize=104857600,posixacl,trans=virtio,version=9p2000.L rootfstype=9p rootwait
