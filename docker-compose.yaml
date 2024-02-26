@@ -1,0 +1,8 @@
+services:
+  rpi:
+    build:
+      args:
+        - image=$IMAGE
+        - kernel=$KERNEL
+      context: .
+    image: rpi:latest
