@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1.3-labs
+
 FROM ubuntu:latest AS kernel
 
 ARG kernel
@@ -53,31 +55,28 @@ RUN --mount=type=cache,id=apt,target=/var/lib/apt \
   && mkdir -p /sd/boot/firmware \
   && cp /tmp/build/arch/$ARCH/boot/Image.gz /sd/boot/firmware/kernel8.img
 
-FROM ubuntu:latest AS image
+FROM alpine:latest AS image
 
 ARG image
 
 # hadolint ignore=DL3020
 ADD $image /sd.img.xz
 
-RUN --mount=type=cache,id=apt,target=/var/lib/apt \
-    --mount=type=cache,id=cache,target=/var/cache \
-    --mount=type=tmpfs,target=/var/log \
-  apt-get update \
-  && apt-get install -y --no-install-recommends 7zip \
-  && 7z x -o/tmp /sd.img.xz \
-  && 7z x -o/tmp /tmp/sd.img 0.fat 1.img \
-  && 7z x -o/sd/boot/firmware /tmp/0.fat \
-  && 7z x -o/sd -snld /tmp/1.img \
-  && apt-get purge -y 7zip \
-  && apt-get autoremove -y \
-  && rm -rf '/sd/[SYS]' /tmp/sd.img /tmp/0.fat /tmp/1.img \
-  && find /sd -lname '/sd/*' -exec sh -c ' \
-    link="$1"; \
-    ln --force --no-dereference --symbolic "$( \
-      realpath --no-symlinks --relative-to="$(dirname "$link")" "$(readlink "$link")" \
-    )" "$link" \
-  ' shell {} \;
+SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
+
+# hadolint ignore=DL3001
+RUN --security=insecure \
+  unxz -ck /sd.img.xz >/tmp/sd.img \
+  && apk add --no-cache --virtual=.tools \
+    jq \
+    sfdisk \
+  && mkdir -p /tmp/sd \
+  && mount -o loop,offset="$(sfdisk -J /tmp/sd.img | jq '.partitiontable.sectorsize * .partitiontable.partitions[1].start')" /tmp/sd.img /tmp/sd \
+  && mount -o loop,offset="$(sfdisk -J /tmp/sd.img | jq '.partitiontable.sectorsize * .partitiontable.partitions[0].start')" /tmp/sd.img /tmp/sd/boot/firmware \
+  && cp -pr /tmp/sd /sd \
+  && umount /tmp/sd/boot/firmware /tmp/sd \
+  && rm -rf /tmp/sd /tmp/sd.img \
+  && apk del .tools
 
 COPY --from=kernel /sd /sd
 

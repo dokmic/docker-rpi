@@ -1,4 +1,5 @@
 ignored:
   - DL3007
   - DL3008
+  - DL3018
 strict-labels: true
