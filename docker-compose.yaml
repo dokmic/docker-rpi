@@ -7,4 +7,7 @@ services:
       context: .
       entitlements:
         - security.insecure
+    environment:
+      - RPI_PASSWORD
+      - RPI_USER=${RPI_USER:-pi}
     image: rpi:latest

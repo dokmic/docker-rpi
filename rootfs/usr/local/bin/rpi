@@ -1,6 +1,11 @@
 #!/bin/sh
 
 config_kernel=/sd/boot/firmware/cmdline.txt
+config_user=/sd/boot/firmware/userconf.txt
+
+# https://www.raspberrypi.com/documentation/computers/configuration.html#configuring-a-user
+[ ! -f "$config_user" -a -n "$RPI_USER" ] \
+  && (echo "$RPI_USER:$(echo "$RPI_PASSWORD" | openssl passwd -1 -stdin)" >"$config_user")
 
 qemu-system-aarch64 \
   -serial mon:stdio \
