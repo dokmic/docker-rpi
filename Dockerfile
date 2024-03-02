@@ -89,6 +89,8 @@ RUN apk add --no-cache \
 COPY --from=image /sd /sd
 COPY /rootfs /
 
+ENV RPI_SSH true
 ENV RPI_USER pi
+ENV RPI_PASSWORD raspberry
 
 CMD ["rpi"]

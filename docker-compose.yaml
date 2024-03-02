@@ -8,6 +8,9 @@ services:
       entitlements:
         - security.insecure
     environment:
+      - RPI_SSH
+      - RPI_USER
       - RPI_PASSWORD
-      - RPI_USER=${RPI_USER:-pi}
     image: rpi:latest
+    ports:
+      - 2222:22
