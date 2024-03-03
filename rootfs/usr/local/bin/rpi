@@ -1,27 +1,49 @@
-#!/bin/sh
+#!/usr/bin/expect
 
-config_kernel=/sd/boot/firmware/cmdline.txt
-config_ssh=/sd/boot/firmware/ssh.txt
-config_user=/sd/boot/firmware/userconf.txt
+set root /sd
+set boot $root/boot/firmware
+set config_kernel $boot/cmdline.txt
+set config_ssh $boot/ssh.txt
+set config_user $boot/userconf.txt
 
-# https://www.raspberrypi.com/documentation/computers/configuration.html#ssh-or-ssh-txt
-[ ! -f "$config_ssh" ] && [ "$RPI_SSH" = "1" -o "$RPI_SSH" = "true" ] && touch "$config_ssh"
+if {![file exists $config_ssh] && [info exists env(RPI_SSH)] && [string is true $env(RPI_SSH)]} {
+  exec touch $config_ssh
+}
 
-# https://www.raspberrypi.com/documentation/computers/configuration.html#configuring-a-user
-[ ! -f "$config_user" -a -n "$RPI_USER" ] \
-  && (echo "$RPI_USER:$(echo "$RPI_PASSWORD" | openssl passwd -1 -stdin)" >"$config_user")
+if {![file exists $config_user] && [info exists env(RPI_USER)] && [info exists env(RPI_PASSWORD)]} {
+  exec echo "$env(RPI_USER):[exec openssl passwd -1 -stdin <<$env(RPI_PASSWORD)]" >$config_user
+}
 
-qemu-system-aarch64 \
-  -serial mon:stdio \
-  -nographic \
-  -no-reboot \
-  -machine virt \
-  -cpu cortex-a72 \
-  -m 1G \
-  -smp 4 \
-  -device virtio-net-device,netdev=net0 \
-  -netdev user,id=net0,hostfwd=tcp::22-:22 \
-  -kernel /sd/boot/firmware/kernel8.img \
-  -virtfs local,id=boot,mount_tag=boot,multidevs=remap,path=/sd/boot/firmware,security_model=none \
-  -virtfs local,id=root,mount_tag=root,multidevs=remap,path=/sd,security_model=none \
-  -append "$(cat "$config_kernel")"
+while {true} {
+  set shutdown false
+  spawn -noecho qemu-system-aarch64 \
+    -serial mon:stdio \
+    -nographic \
+    -no-reboot \
+    -machine virt \
+    -cpu cortex-a72 \
+    -m 1G \
+    -smp 4 \
+    -device virtio-net-device,netdev=net0 \
+    -netdev user,id=net0,hostfwd=tcp::22-:22 \
+    -kernel $boot/kernel8.img \
+    -virtfs local,id=boot,mount_tag=boot,multidevs=remap,path=$boot,security_model=none \
+    -virtfs local,id=root,mount_tag=root,multidevs=remap,path=$root,security_model=none \
+    -append [exec cat $config_kernel]
+
+  interact -o -nobuffer -re {^\[\s*[\d\.]+\]\s+reboot: Power down} {
+    set shutdown true
+    expect eof
+    return
+  }
+
+  lassign [wait] pid spawn_id os_error exit_code
+
+  if {$exit_code != 0} {
+    exit $exit_code
+  }
+
+  if {$shutdown} {
+    exit 0
+  }
+}

@@ -83,6 +83,7 @@ COPY --from=kernel /sd /sd
 FROM alpine:latest
 
 RUN apk add --no-cache \
+  expect \
   openssl \
   qemu-system-aarch64
 
