@@ -6,6 +6,14 @@ set config_kernel $boot/cmdline.txt
 set config_ssh $boot/ssh.txt
 set config_user $boot/userconf.txt
 
+set port [join [lmap port [split $env(RPI_PORT) " "] {
+  if {$port == ""} {
+    continue
+  }
+  lassign [split [string trim $port] "/"] port protocol
+  subst "$protocol\::$port-:$port"
+}] ","]
+
 if {![file exists $config_ssh] && [info exists env(RPI_SSH)] && [string is true $env(RPI_SSH)]} {
   exec touch $config_ssh
 }
@@ -25,7 +33,7 @@ while {true} {
     -m 1G \
     -smp 4 \
     -device virtio-net-device,netdev=net0 \
-    -netdev user,id=net0,hostfwd=tcp::22-:22 \
+    -netdev user,id=net0[if {$port != ""} {subst ,hostfwd=$port}] \
     -kernel $boot/kernel8.img \
     -virtfs local,id=boot,mount_tag=boot,multidevs=remap,path=$boot,security_model=none \
     -virtfs local,id=root,mount_tag=root,multidevs=remap,path=$root,security_model=none \
