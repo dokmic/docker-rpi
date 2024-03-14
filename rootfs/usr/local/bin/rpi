@@ -6,6 +6,11 @@ set config_kernel $boot/cmdline.txt
 set config_ssh $boot/ssh.txt
 set config_user $boot/userconf.txt
 
+set command [string cat \
+  [if {$argc} {subst init=}] \
+  [join [lmap arg $argv {string cat \" [string map {\" \"\"} $arg] \"}] " "]
+]
+
 set port [join [lmap port [split $env(RPI_PORT) " "] {
   if {$port == ""} {
     continue
@@ -23,7 +28,9 @@ if {![file exists $config_user] && [info exists env(RPI_USER)] && [info exists e
 }
 
 while {true} {
-  set shutdown false
+  set panic_code 0
+  set reboot false
+
   spawn -noecho qemu-system-aarch64 \
     -serial mon:stdio \
     -nographic \
@@ -37,21 +44,38 @@ while {true} {
     -kernel $boot/kernel8.img \
     -virtfs local,id=boot,mount_tag=boot,multidevs=remap,path=$boot,security_model=none \
     -virtfs local,id=root,mount_tag=root,multidevs=remap,path=$root,security_model=none \
-    -append [exec cat $config_kernel]
+    -append "[exec cat $config_kernel] $command panic=-1"
 
-  interact -o -nobuffer -re {^\[\s*[\d\.]+\]\s+reboot: Power down} {
-    set shutdown true
-    expect eof
-    return
+  match_max 1048576
+  interact {
+    -o -reset
+
+    -nobuffer "reboot: Restarting system" {
+      set reboot true
+      expect eof
+      return
+    }
+
+    -nobuffer -re {^\[\s*[\d\.]+\]\s+Kernel panic - not syncing: Requested init .* failed \(error (-?\d+)\)\.} {
+      set panic_code $interact_out(1,string)
+      expect eof
+      return
+    }
+
+    -nobuffer -re {^\[\s*[\d\.]+\]\s+Kernel panic - not syncing: Attempted to kill init! exitcode=(0x[\da-f]+)[^\da-f]} {
+      set panic_code [expr "$interact_out(1,string)>>8"]
+      expect eof
+      return
+    }
+  }
+
+  if {$panic_code != 0} {
+    exit $panic_code
   }
 
   lassign [wait] pid spawn_id os_error exit_code
 
-  if {$exit_code != 0} {
+  if {$exit_code != 0 || !$reboot} {
     exit $exit_code
-  }
-
-  if {$shutdown} {
-    exit 0
   }
 }
