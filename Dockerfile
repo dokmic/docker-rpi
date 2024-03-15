@@ -78,6 +78,10 @@ RUN --security=insecure \
   && rm -rf /tmp/sd /tmp/sd.img \
   && apk del .tools
 
+RUN rm \
+  /sd/etc/init.d/resize2fs_once \
+  /sd/etc/systemd/system/multi-user.target.wants/rpi-eeprom-update.service
+
 COPY --from=kernel /sd /sd
 
 FROM alpine:latest
