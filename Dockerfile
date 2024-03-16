@@ -52,8 +52,8 @@ RUN --mount=type=cache,id=apt,target=/var/lib/apt \
   && apt-get purge -y $dependencies \
   && apt-get autoremove --purge -y \
   && rm -rf /tmp/kernel \
-  && mkdir -p /sd/boot/firmware \
-  && cp /tmp/build/arch/$ARCH/boot/Image.gz /sd/boot/firmware/kernel8.img
+  && mkdir -p /media/sd/boot/firmware \
+  && cp /tmp/build/arch/$ARCH/boot/Image.gz /media/sd/boot/firmware/kernel8.img
 
 FROM alpine:latest AS image
 
@@ -73,16 +73,16 @@ RUN --security=insecure \
   && mkdir -p /tmp/sd \
   && mount -o loop,offset="$(sfdisk -J /tmp/sd.img | jq '.partitiontable.sectorsize * .partitiontable.partitions[1].start')" /tmp/sd.img /tmp/sd \
   && mount -o loop,offset="$(sfdisk -J /tmp/sd.img | jq '.partitiontable.sectorsize * .partitiontable.partitions[0].start')" /tmp/sd.img /tmp/sd/boot/firmware \
-  && cp -pr /tmp/sd /sd \
+  && cp -pr /tmp/sd /media/sd \
   && umount /tmp/sd/boot/firmware /tmp/sd \
   && rm -rf /tmp/sd /tmp/sd.img \
   && apk del .tools
 
 RUN rm \
-  /sd/etc/init.d/resize2fs_once \
-  /sd/etc/systemd/system/multi-user.target.wants/rpi-eeprom-update.service
+  /media/sd/etc/init.d/resize2fs_once \
+  /media/sd/etc/systemd/system/multi-user.target.wants/rpi-eeprom-update.service
 
-COPY --from=kernel /sd /sd
+COPY --from=kernel /media/sd /media/sd
 
 FROM alpine:latest
 
@@ -91,7 +91,7 @@ RUN apk add --no-cache \
   openssl \
   qemu-system-aarch64
 
-COPY --from=image /sd /sd
+COPY --from=image /media/sd /media/sd
 COPY /rootfs /
 
 ENV RPI_PORT 22/tcp

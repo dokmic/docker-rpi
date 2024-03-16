@@ -1,6 +1,6 @@
 #!/usr/bin/expect
 
-set root /sd
+set root /media/sd
 set boot $root/boot/firmware
 set config_kernel $boot/cmdline.txt
 set config_ssh $boot/ssh.txt
