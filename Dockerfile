@@ -97,9 +97,4 @@ RUN apk add --no-cache \
 
 COPY --from=rootfs / /
 
-ENV RPI_PORT 22/tcp
-ENV RPI_SSH true
-ENV RPI_USER pi
-ENV RPI_PASSWORD raspberry
-
 ENTRYPOINT ["rpi"]

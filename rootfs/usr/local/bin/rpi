@@ -1,5 +1,13 @@
 #!/usr/bin/expect
 
+proc env {name {default ""}} {
+  if {![info exists ::env($name)] || $::env($name) eq ""} {
+    return $default
+  }
+
+  return $::env($name)
+}
+
 set root /media/sd
 set boot $root/boot/firmware
 set config_kernel $boot/cmdline.txt
@@ -11,7 +19,7 @@ set command [string cat \
   [join [lmap arg $argv {string cat \" [string map {\" \"\"} $arg] \"}] " "]
 ]
 
-set port [join [lmap port [split $env(RPI_PORT) " "] {
+set port [join [lmap port [split [env RPI_PORT 22/tcp] " "] {
   if {$port == ""} {
     continue
   }
@@ -19,12 +27,12 @@ set port [join [lmap port [split $env(RPI_PORT) " "] {
   subst "$protocol\::$port-:$port"
 }] ","]
 
-if {![file exists $config_ssh] && [info exists env(RPI_SSH)] && [string is true $env(RPI_SSH)]} {
+if {![file exists $config_ssh] && [string is true [env RPI_SSH true]]} {
   exec touch $config_ssh
 }
 
-if {![file exists $config_user] && [info exists env(RPI_USER)] && [info exists env(RPI_PASSWORD)]} {
-  exec echo "$env(RPI_USER):[exec openssl passwd -1 -stdin <<$env(RPI_PASSWORD)]" >$config_user
+if {![file exists $config_user]} {
+  exec echo "[env RPI_USER pi]:[exec openssl passwd -1 -stdin <<[env RPI_PASSWORD raspberry]]" >$config_user
 }
 
 while {true} {

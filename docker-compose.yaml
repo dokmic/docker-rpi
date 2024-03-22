@@ -7,9 +7,11 @@ services:
       context: .
       entitlements:
         - security.insecure
-    env_file:
-      - path: .env
-        required: false
+    environment:
+      - RPI_PASSWORD
+      - RPI_PORT
+      - RPI_SSH
+      - RPI_USER
     image: rpi:latest
     ports:
       - 2222:22
