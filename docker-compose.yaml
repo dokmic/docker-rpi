@@ -8,8 +8,10 @@ services:
       entitlements:
         - security.insecure
     environment:
+      - RPI_CPU
       - RPI_PASSWORD
       - RPI_PORT
+      - RPI_RAM
       - RPI_SSH
       - RPI_USER
     image: rpi:latest

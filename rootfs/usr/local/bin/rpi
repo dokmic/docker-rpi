@@ -45,8 +45,8 @@ while {true} {
     -no-reboot \
     -machine virt \
     -cpu cortex-a72 \
-    -m 1G \
-    -smp 4 \
+    -m [env RPI_RAM 1G] \
+    -smp [env RPI_CPU 4] \
     -device virtio-net-device,netdev=net0 \
     -netdev user,id=net0[if {$port != ""} {subst ,hostfwd=$port}] \
     -kernel $boot/kernel8.img \
