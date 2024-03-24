@@ -2,6 +2,7 @@ services:
   rpi:
     build:
       args:
+        - arch=$ARCH
         - image=$IMAGE
         - kernel=$KERNEL
       context: .

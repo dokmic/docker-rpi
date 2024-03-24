@@ -19,6 +19,11 @@ set command [string cat \
   [join [lmap arg $argv {string cat \" [string map {\" \"\"} $arg] \"}] " "]
 ]
 
+set cpu [switch [env RPI_ARCH] {
+  arm {subst ""}
+  default {subst cortex-a72}
+}]
+
 set port [join [lmap port [split [env RPI_PORT 22/tcp] " "] {
   if {$port == ""} {
     continue
@@ -39,17 +44,17 @@ while {true} {
   set panic_code 0
   set reboot false
 
-  spawn -noecho qemu-system-aarch64 \
+  spawn -noecho qemu-system-[env RPI_ARCH aarch64] \
     -serial mon:stdio \
     -nographic \
     -no-reboot \
     -machine virt \
-    -cpu cortex-a72 \
+    {*}[if {$cpu != ""} {subst "-cpu $cpu"}] \
     -m [env RPI_RAM 1G] \
     -smp [env RPI_CPU 4] \
     -device virtio-net-device,netdev=net0 \
     -netdev user,id=net0[if {$port != ""} {subst ,hostfwd=$port}] \
-    -kernel $boot/kernel8.img \
+    -kernel $boot/kernel.img \
     -virtfs local,id=boot,mount_tag=boot,multidevs=remap,path=$boot,security_model=none \
     -virtfs local,id=root,mount_tag=root,multidevs=remap,path=$root,security_model=none \
     -append "[exec cat $config_kernel] $command panic=-1"
