@@ -1,3 +1,5 @@
 .env
 *compose.override.yaml
 *compose.override.yml
+docker-bake.override.hcl
+docker-bake.override.json

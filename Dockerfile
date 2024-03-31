@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.3-labs
 
-FROM ubuntu:latest AS kernel
+FROM --platform=$BUILDPLATFORM ubuntu:latest AS kernel
 
 ARG arch
 ARG kernel
@@ -14,9 +14,9 @@ WORKDIR /tmp/kernel
 # https://wiki.qemu.org/Documentation/9psetup#Preparation
 # https://superuser.com/a/1301973
 # hadolint ignore=SC2086
-RUN --mount=type=cache,id=apt,target=/var/lib/apt \
-    --mount=type=cache,id=build,target=/tmp/build \
-    --mount=type=cache,id=cache,target=/var/cache \
+RUN --mount=type=cache,id=$arch-apt,target=/var/lib/apt \
+    --mount=type=cache,id=$arch-build,target=/tmp/build \
+    --mount=type=cache,id=$arch-cache,target=/var/cache \
     --mount=type=tmpfs,target=/var/log \
   case "$arch" in \
     aarch64) \
@@ -73,7 +73,7 @@ RUN --mount=type=cache,id=apt,target=/var/lib/apt \
   && cp /tmp/build/arch/$ARCH/boot/$IMAGE /media/sd/boot/firmware/$KERNEL \
   && ln -s $KERNEL /media/sd/boot/firmware/kernel.img
 
-FROM alpine:latest AS image
+FROM --platform=$BUILDPLATFORM alpine:latest AS image
 
 ARG image
 
@@ -100,7 +100,7 @@ RUN rm \
   /media/sd/etc/init.d/resize2fs_once \
   /media/sd/etc/systemd/system/multi-user.target.wants/rpi-eeprom-update.service
 
-FROM scratch AS rootfs
+FROM --platform=$BUILDPLATFORM scratch AS rootfs
 
 COPY --from=image /media/sd /media/sd
 COPY --from=kernel /media/sd /media/sd
