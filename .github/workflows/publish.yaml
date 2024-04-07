@@ -34,3 +34,10 @@ jobs:
           KERNEL: ${{ vars.KERNEL }}
           REPOSITORY: ${{ vars.REPOSITORY }}
           TAG: ${{ vars.TAG }}
+
+      - name: Update description on Docker Hub
+        uses: peter-evans/dockerhub-description@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: ${{ vars.REPOSITORY }}
