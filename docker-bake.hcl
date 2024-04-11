@@ -32,6 +32,14 @@ target "rpi" {
     kernel = KERNEL
   }
 
+  cache-from = [
+    "type=registry,ref=${REPOSITORY}:${item.arch}-cache"
+  ]
+
+  cache-to = [
+    "type=registry,ref=${REPOSITORY}:${item.arch}-cache,mode=max"
+  ]
+
   entitlements = ["security.insecure"]
 
   platforms = [
