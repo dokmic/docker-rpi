@@ -1,43 +1,32 @@
-variable "IMAGE" {}
+variable "DOCKERHUB_REPOSITORY" {}
 
-variable "KERNEL" {}
-
-variable "REPOSITORY" {}
-
-variable "TAG" {}
+variable "matrix" {
+  default = []
+}
 
 group "default" {
   targets = ["rpi"]
 }
 
 target "rpi" {
-  name = item.arch
+  name = item.name
 
   matrix = {
-    item = [
-      {
-        arch = "arm"
-        tags = ["${TAG}-arm", "arm"]
-      },
-      {
-        arch = "aarch64"
-        tags = ["${TAG}-arm64", "arm64", "${TAG}", "latest"]
-      },
-    ]
+    item = matrix
   }
 
   args = {
     arch = item.arch
-    image = IMAGE
-    kernel = KERNEL
+    image = item.image
+    kernel = item.kernel
   }
 
   cache-from = [
-    "type=registry,ref=${REPOSITORY}:${item.arch}-cache"
+    "type=registry,ref=${DOCKERHUB_REPOSITORY}:${item.cache}"
   ]
 
   cache-to = [
-    "type=registry,ref=${REPOSITORY}:${item.arch}-cache,mode=max"
+    "type=registry,ref=${DOCKERHUB_REPOSITORY}:${item.cache},mode=max"
   ]
 
   entitlements = ["security.insecure"]
@@ -49,5 +38,5 @@ target "rpi" {
     "linux/i386",
   ]
 
-  tags = [for tag in item.tags : "${REPOSITORY}:${tag}"]
+  tags = [for tag in item.tags : "${DOCKERHUB_REPOSITORY}:${tag}"]
 }

@@ -24,20 +24,23 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      - name: Prepare overrides
+        run: |
+          echo "$DOCKER_BAKE_OVERRIDE" >docker-bake.override.hcl
+        env:
+          DOCKER_BAKE_OVERRIDE: ${{ vars.DOCKER_BAKE_OVERRIDE }}
+
       - name: Bake image
         uses: docker/bake-action@v5
         with:
           allow: security.insecure
           push: true
         env:
-          IMAGE: ${{ vars.IMAGE }}
-          KERNEL: ${{ vars.KERNEL }}
-          REPOSITORY: ${{ vars.REPOSITORY }}
-          TAG: ${{ vars.TAG }}
+          DOCKERHUB_REPOSITORY: ${{ secrets.DOCKERHUB_REPOSITORY }}
 
       - name: Update description on Docker Hub
         uses: peter-evans/dockerhub-description@v4
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-          repository: ${{ vars.REPOSITORY }}
+          repository: ${{ secrets.DOCKERHUB_REPOSITORY }}

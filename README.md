@@ -105,12 +105,8 @@ Name | Default | Description
 `RPI_USER` | `raspberry` | The predefined user password.
 
 ## Tags
-The `latest` tag always points to the ARM64 distribution of the Raspberry Pi OS.
-
-The specific architecture can be pinned using `arm` or `arm64` tags.
-
-Version-specific tags, such as `20240704-arm64` and `20240704-arm`, are also available.
-At the same time, the naked version tag like `20240704` points to the corresponding ARM64 distribution.
+- `latest`, `arm64`, `20240704`, `20240704-arm64` &mdash; [Raspberry Pi OS Lite 64-bit ARM from 2024-07-04](https://downloads.raspberrypi.com/raspios_lite_arm64/images/raspios_lite_arm64-2024-07-04/).
+- `arm` `20240704-arm` &mdash; [Raspberry Pi OS Lite 32-bit ARM from 2024-07-04](https://downloads.raspberrypi.com/raspios_lite_armhf/images/raspios_lite_armhf-2024-07-04/).
 
 ## License
 [WTFPL 2.0][license]
