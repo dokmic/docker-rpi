@@ -14,11 +14,11 @@ Unlike others, this image is optimized to run inside a container with volumes su
 
 ## Context
 ### Motivation
-Sometimes, testing your work on the Raspberry Pi OS is easier without running it on real hardware.
-Things like Ansible Playbooks or a Kubernetes cluster in most of the cases can be tested in a virtualized environment.
+Sometimes, testing your work on the Raspberry Pi OS is much easier without running it on real hardware.
+Things like Ansible Playbooks or a Kubernetes cluster, in most cases, can be tested in a virtualized environment.
 
 There are plenty of tutorials and other Docker images running Raspberry Pi OS using QEMU, but all of them extract the OS image at runtime.
-Hence, they do not support mounting volumes to share file system.
+Hence, they do not support mounting volumes to share the filesystem.
 
 ### Performance Optimization
 First off, the Docker image is running QEMU using the `virt` generic virtual platform.
@@ -67,6 +67,12 @@ docker run -it dokmic/rpi /bin/bash -c 'exit 123'; echo $?
 Some of the parameters can be customized via the environment variables (e.g., CPU, RAM, or user credentials):
 ```bash
 docker run -it -e RPI_USER=user -e RPI_PASSWORD=password dokmic/rpi
+```
+
+### Shared Volumes
+To share data from your host with the running Raspberry Pi OS, the [Docker Volumes](https://docs.docker.com/engine/storage/volumes/) should be mounted below `/media/sd`:
+```bash
+docker run -it -v .:/media/sd/root/app dokmic/rpi
 ```
 
 ### Stopping Container
