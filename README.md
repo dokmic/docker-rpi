@@ -14,11 +14,11 @@ Unlike others, this image is optimized to run inside a container with volumes su
 
 ## Context
 ### Motivation
-Sometimes, testing your work on the Raspberry Pi OS is easier without running it on real hardware.
-Things like Ansible Playbooks or a Kubernetes cluster in most of the cases can be tested in a virtualized environment.
+Sometimes, testing your work on the Raspberry Pi OS is much easier without running it on real hardware.
+Things like Ansible Playbooks or a Kubernetes cluster, in most cases, can be tested in a virtualized environment.
 
 There are plenty of tutorials and other Docker images running Raspberry Pi OS using QEMU, but all of them extract the OS image at runtime.
-Hence, they do not support mounting volumes to share file system.
+Hence, they do not support mounting volumes to share the filesystem.
 
 ### Performance Optimization
 First off, the Docker image is running QEMU using the `virt` generic virtual platform.
@@ -69,6 +69,12 @@ Some of the parameters can be customized via the environment variables (e.g., CP
 docker run -it -e RPI_USER=user -e RPI_PASSWORD=password dokmic/rpi
 ```
 
+### Shared Volumes
+To share data from your host with the running Raspberry Pi OS, the [Docker Volumes](https://docs.docker.com/engine/storage/volumes/) should be mounted below `/media/sd`:
+```bash
+docker run -it -v .:/media/sd/root/app dokmic/rpi
+```
+
 ### Stopping Container
 The container can be stopped using the [`kill`](https://docs.docker.com/reference/cli/docker/container/kill/) and [`stop`](https://docs.docker.com/reference/cli/docker/container/stop/) commands.
 
@@ -102,7 +108,7 @@ Name | Default | Description
 `RPI_PORT` | `22/tcp` | The space-separated set of ports forwarded inside the running container (e.g., `22/tcp 80/tcp 53/udp`).
 `RPI_SSH` | `true` | The boolean flag enables the SSH server.
 `RPI_USER` | `pi` | The predefined user.
-`RPI_USER` | `raspberry` | The predefined user password.
+`RPI_PASSWORD` | `raspberry` | The predefined user password.
 
 ## Tags
 - `20241022-arm64`, `20241022`, `arm64`, `latest` &mdash; [Raspberry Pi OS Lite 64-bit ARM from 2024-10-22](https://downloads.raspberrypi.com/raspios_lite_arm64/images/raspios_lite_arm64-2024-10-28/).
