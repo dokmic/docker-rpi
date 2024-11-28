@@ -29,7 +29,7 @@ set port [join [lmap port [split [env RPI_PORT 22/tcp] " "] {
     continue
   }
   lassign [split [string trim $port] "/"] port protocol
-  subst "$protocol\::$port-:$port"
+  subst "hostfwd=$protocol\::$port-:$port"
 }] ","]
 
 if {![file exists $config_ssh] && [string is true [env RPI_SSH true]]} {
@@ -53,7 +53,7 @@ while {true} {
     -m [env RPI_RAM 1G] \
     -smp [env RPI_CPU 4] \
     -device virtio-net-device,netdev=net0 \
-    -netdev user,id=net0[if {$port != ""} {subst ,hostfwd=$port}] \
+    -netdev user,id=net0[if {$port != ""} {subst ,$port}] \
     -kernel $boot/kernel.img \
     -virtfs local,id=boot,mount_tag=boot,multidevs=remap,path=$boot,security_model=none \
     -virtfs local,id=root,mount_tag=root,multidevs=remap,path=$root,security_model=none \
