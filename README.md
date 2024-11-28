@@ -111,8 +111,10 @@ Name | Default | Description
 `RPI_PASSWORD` | `raspberry` | The predefined user password.
 
 ## Tags
-- `20241022-arm64`, `20241022`, `arm64`, `latest` &mdash; [Raspberry Pi OS Lite 64-bit ARM from 2024-10-22](https://downloads.raspberrypi.com/raspios_lite_arm64/images/raspios_lite_arm64-2024-10-28/).
-- `20241022-arm`, `arm` &mdash; [Raspberry Pi OS Lite 32-bit ARM from 2024-10-22](https://downloads.raspberrypi.com/raspios_lite_armhf/images/raspios_lite_armhf-2024-10-28/).
+- `20241113-arm64`, `20241113`, `arm64`, `latest` &mdash; [Raspberry Pi OS Lite 64-bit ARM from 2024-11-13](https://downloads.raspberrypi.com/raspios_lite_arm64/images/raspios_lite_arm64-2024-11-18/).
+- `20241113-arm`, `arm` &mdash; [Raspberry Pi OS Lite 32-bit ARM from 2024-11-13](https://downloads.raspberrypi.com/raspios_lite_armhf/images/raspios_lite_armhf-2024-11-18/).
+- `20241022-arm64`, `20241022` &mdash; [Raspberry Pi OS Lite 64-bit ARM from 2024-10-22](https://downloads.raspberrypi.com/raspios_lite_arm64/images/raspios_lite_arm64-2024-10-28/).
+- `20241022-arm` &mdash; [Raspberry Pi OS Lite 32-bit ARM from 2024-10-22](https://downloads.raspberrypi.com/raspios_lite_armhf/images/raspios_lite_armhf-2024-10-28/).
 - `20240704-arm64`, `20240704` &mdash; [Raspberry Pi OS Lite 64-bit ARM from 2024-07-04](https://downloads.raspberrypi.com/raspios_lite_arm64/images/raspios_lite_arm64-2024-07-04/).
 - `20240704-arm` &mdash; [Raspberry Pi OS Lite 32-bit ARM from 2024-07-04](https://downloads.raspberrypi.com/raspios_lite_armhf/images/raspios_lite_armhf-2024-07-04/).
 
