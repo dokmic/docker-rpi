@@ -54,7 +54,7 @@ while {true} {
     -smp [env RPI_CPU 4] \
     -device virtio-net-device,netdev=net0 \
     -netdev user,id=net0[if {$port != ""} {subst ,$port}] \
-    -kernel $boot/kernel.img \
+    -kernel $boot/qemu.img \
     -virtfs local,id=boot,mount_tag=boot,multidevs=remap,path=$boot,security_model=none \
     -virtfs local,id=root,mount_tag=root,multidevs=remap,path=$root,security_model=none \
     -append "[exec cat $config_kernel] $command panic=-1"

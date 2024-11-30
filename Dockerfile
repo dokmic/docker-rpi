@@ -25,7 +25,6 @@ RUN --mount=type=cache,id=$arch-apt,target=/var/lib/apt \
       export GCC=gcc-aarch64-linux-gnu \
       export IMAGE=Image.gz \
       export CROSS_COMPILE=aarch64-linux-gnu- \
-      export KERNEL=kernel8.img \
       ;; \
     arm) \
       export ARCH=arm \
@@ -33,7 +32,6 @@ RUN --mount=type=cache,id=$arch-apt,target=/var/lib/apt \
       export GCC=gcc-arm-linux-gnueabihf \
       export IMAGE=zImage \
       export CROSS_COMPILE=arm-linux-gnueabihf- \
-      export KERNEL=kernel7.img \
       ;; \
   esac \
   && apt-get update \
@@ -70,8 +68,7 @@ RUN --mount=type=cache,id=$arch-apt,target=/var/lib/apt \
   && apt-get autoremove --purge -y \
   && rm -rf /tmp/kernel \
   && mkdir -p /media/sd/boot/firmware \
-  && cp /tmp/build/arch/$ARCH/boot/$IMAGE /media/sd/boot/firmware/$KERNEL \
-  && ln -s $KERNEL /media/sd/boot/firmware/kernel.img
+  && cp /tmp/build/arch/$ARCH/boot/$IMAGE /media/sd/boot/firmware/qemu.img
 
 FROM --platform=$BUILDPLATFORM alpine:latest AS image
 
