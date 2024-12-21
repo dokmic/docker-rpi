@@ -1,1 +1,0 @@
-console=ttyAMA0,115200 init=/usr/lib/raspberrypi-sys-mods/firstboot root=root rootflags=cache=none,msize=512000,posixacl,trans=virtio,version=9p2000.L rootfstype=9p rootwait

@@ -10,11 +10,20 @@ proc env {name {default ""}} {
 
 set root /media/sd
 set boot $root/boot/firmware
-set config_kernel $boot/cmdline.txt
+set config_cmdline $boot/cmdline.txt
 set config_ssh $boot/ssh.txt
 set config_user $boot/userconf.txt
 
-set command [string cat \
+set cmdline_overrides {
+  console=ttyAMA0,115200
+  panic=-1
+  root=root
+  rootflags=cache=none,msize=512000,posixacl,trans=virtio,version=9p2000.L
+  rootfstype=9p
+  rootwait=no
+}
+
+set cmdline_command [string cat \
   [if {$argc} {subst init=}] \
   [join [lmap arg $argv {string cat \" [string map {\" \"\"} $arg] \"}] " "]
 ]
@@ -41,8 +50,18 @@ if {![file exists $config_user]} {
 }
 
 while {true} {
+  set cmdline [list {*}[exec cat $config_cmdline]]
   set panic_code 0
   set reboot false
+
+  foreach parameter [list {*}$cmdline_overrides {*}$cmdline_command] {
+    lassign [split $parameter =] key
+
+    while {[set index [lsearch -regexp $cmdline "^${key}(=.*)?$"]] > -1} {
+      set cmdline [lreplace $cmdline $index $index]
+    }
+  }
+  lappend cmdline {*}$cmdline_overrides {*}$cmdline_command
 
   spawn -noecho qemu-system-[env RPI_ARCH aarch64] \
     -serial mon:stdio \
@@ -57,7 +76,7 @@ while {true} {
     -kernel $boot/qemu.img \
     -virtfs local,id=boot,mount_tag=boot,multidevs=remap,path=$boot,security_model=none,writeout=immediate \
     -virtfs local,id=root,mount_tag=root,multidevs=remap,path=$root,security_model=none,writeout=immediate \
-    -append "[exec cat $config_kernel] $command panic=-1"
+    -append $cmdline
 
   match_max 1048576
   interact {
