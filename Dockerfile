@@ -83,17 +83,21 @@ SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 RUN --security=insecure \
   unxz -ck /sd.img.xz >/tmp/sd.img \
   && apk add --no-cache --virtual=.tools \
+    e2fsprogs \
     jq \
     sfdisk \
-  && mkdir -p /tmp/sd \
-  && mount -o loop,offset="$(sfdisk -J /tmp/sd.img | jq '.partitiontable.sectorsize * .partitiontable.partitions[1].start')" /tmp/sd.img /tmp/sd \
-  && mount -o loop,offset="$(sfdisk -J /tmp/sd.img | jq '.partitiontable.sectorsize * .partitiontable.partitions[0].start')" /tmp/sd.img /tmp/sd/boot/firmware \
-  && cp -pr /tmp/sd /media/sd \
-  && umount /tmp/sd/boot/firmware /tmp/sd \
-  && rm -rf /tmp/sd /tmp/sd.img \
-  && apk del .tools
-
-RUN rm \
+    qemu-img \
+  && mkdir -p /media/sd/boot/firmware /media/sd/usr/lib/locale \
+  && qemu-img create -f raw /media/sd/boot/firmware/locale.img 10M \
+  && mkfs.ext4 /media/sd/boot/firmware/locale.img \
+  && mount -o loop,offset="$(sfdisk -J /tmp/sd.img | jq '.partitiontable.sectorsize * .partitiontable.partitions[1].start')" /tmp/sd.img /mnt \
+  && mount -o loop,offset="$(sfdisk -J /tmp/sd.img | jq '.partitiontable.sectorsize * .partitiontable.partitions[0].start')" /tmp/sd.img /mnt/boot/firmware \
+  && mount -o loop /media/sd/boot/firmware/locale.img /media/sd/usr/lib/locale \
+  && cp -pr /mnt/* /media/sd \
+  && umount /media/sd/usr/lib/locale /mnt/boot/firmware /mnt \
+  && rm -rf /tmp/sd.img \
+  && apk del .tools \
+  && rm \
   /media/sd/etc/init.d/resize2fs_once \
   /media/sd/etc/systemd/system/multi-user.target.wants/rpi-eeprom-update.service
 

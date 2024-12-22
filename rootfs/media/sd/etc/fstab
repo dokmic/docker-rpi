@@ -11,4 +11,4 @@ tmpfs /tmp tmpfs rw,nosuid,nodev,size=524288k,nr_inodes=204800 0 0
 
 # Workaround for `locale-gen` on 9P root filesystem.
 # @see https://lists.gnu.org/archive/html/qemu-discuss/2011-12/msg00019.html
-tmpfs /usr/lib/locale tmpfs rw,nosuid,nodev,size=10240k,nr_inodes=4000 0 0
+/dev/vda /usr/lib/locale ext4 defaults 0 2

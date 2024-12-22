@@ -74,6 +74,7 @@ while {true} {
     -device virtio-net-device,netdev=net0 \
     -netdev user,id=net0[if {$port != ""} {subst ,$port}] \
     -kernel $boot/qemu.img \
+    -drive file=$boot/locale.img,format=raw \
     -virtfs local,id=boot,mount_tag=boot,multidevs=remap,path=$boot,security_model=none,writeout=immediate \
     -virtfs local,id=root,mount_tag=root,multidevs=remap,path=$root,security_model=none,writeout=immediate \
     -append $cmdline
