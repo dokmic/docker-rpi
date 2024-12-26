@@ -14,7 +14,14 @@ set config_cmdline $boot/cmdline.txt
 set config_ssh $boot/ssh.txt
 set config_user $boot/userconf.txt
 
-set cmdline_overrides {
+set default_arch aarch64
+set default_cpu cortex-a72
+set default_port 22/tcp
+set default_ram 1G
+set default_smp 4
+set default_user pi
+set default_password raspberry
+set default_cmdline {
   console=ttyAMA0,115200
   panic=-1
   root=root
@@ -28,51 +35,51 @@ set cmdline_command [string cat \
   [join [lmap arg $argv {string cat \" [string map {\" \"\"} $arg] \"}] " "]
 ]
 
-set cpu [switch [env RPI_ARCH] {
+set arch [env RPI_ARCH $default_arch]
+
+set cpu [switch $arch {
   arm {subst ""}
-  default {subst cortex-a72}
+  default {subst $default_cpu}
 }]
 
-set port [join [lmap port [split [env RPI_PORT 22/tcp] " "] {
-  if {$port == ""} {
-    continue
-  }
+set port [join [lmap port [list {*}[env RPI_PORT $default_port]] {
   lassign [split [string trim $port] "/"] port protocol
-  subst "hostfwd=$protocol\::$port-:$port"
-}] ","]
+  subst ",hostfwd=$protocol\::$port-:$port"
+}] ""]
 
 if {![file exists $config_ssh] && [string is true [env RPI_SSH true]]} {
   exec touch $config_ssh
 }
 
 if {![file exists $config_user]} {
-  exec echo "[env RPI_USER pi]:[exec openssl passwd -1 -stdin <<[env RPI_PASSWORD raspberry]]" >$config_user
+  exec echo "[env RPI_USER $default_user]:[exec openssl passwd -1 -stdin <<[env RPI_PASSWORD $default_password]]" >$config_user
 }
 
 while {true} {
-  set cmdline [list {*}[exec cat $config_cmdline]]
   set panic_code 0
   set reboot false
 
-  foreach parameter [list {*}$cmdline_overrides {*}$cmdline_command] {
+  set cmdline [list {*}[exec cat $config_cmdline]]
+
+  foreach parameter [list {*}$default_cmdline {*}$cmdline_command] {
     lassign [split $parameter =] key
 
     while {[set index [lsearch -regexp $cmdline "^${key}(=.*)?$"]] > -1} {
       set cmdline [lreplace $cmdline $index $index]
     }
   }
-  lappend cmdline {*}$cmdline_overrides {*}$cmdline_command
+  lappend cmdline {*}$default_cmdline {*}$cmdline_command
 
-  spawn -noecho qemu-system-[env RPI_ARCH aarch64] \
+  spawn -noecho qemu-system-$arch \
     -serial mon:stdio \
     -nographic \
     -no-reboot \
     -machine virt \
     {*}[if {$cpu != ""} {subst "-cpu $cpu"}] \
-    -m [env RPI_RAM 1G] \
-    -smp [env RPI_CPU 4] \
+    -m [env RPI_RAM $default_ram] \
+    -smp [env RPI_CPU $default_smp] \
     -device virtio-net-device,netdev=net0 \
-    -netdev user,id=net0[if {$port != ""} {subst ,$port}] \
+    -netdev user,id=net0$port \
     -kernel $boot/qemu.img \
     -drive file=$boot/locale.img,format=raw \
     -virtfs local,id=boot,mount_tag=boot,multidevs=remap,path=$boot,security_model=none,writeout=immediate \
