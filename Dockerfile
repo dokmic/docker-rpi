@@ -116,6 +116,11 @@ RUN --security=insecure <<EOF
   apk del .tools
 EOF
 
+# Workaround to support `update-initramfs`.
+COPY <<EOF /media/sd/etc/initramfs-tools/conf.d/modules
+MODULES=most
+EOF
+
 FROM --platform=$BUILDPLATFORM scratch AS rootfs
 
 COPY --from=image /media/sd /media/sd
