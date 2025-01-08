@@ -23,7 +23,7 @@ RUN --mount=type=cache,id=apt-$arch-$kernel,target=/var/lib/apt \
   case "$arch" in
     aarch64)
       export ARCH=arm64
-      export DEFCONFIG=defconfig
+      export DEFCONFIG=bcm2711_defconfig
       export GCC=gcc-aarch64-linux-gnu
       export IMAGE=Image.gz
       export CROSS_COMPILE=aarch64-linux-gnu-
@@ -65,6 +65,7 @@ RUN --mount=type=cache,id=apt-$arch-$kernel,target=/var/lib/apt \
     --disable CONFIG_PCI_MSI \
     --disable CONFIG_PCI_MSI_IRQ_DOMAIN \
     --enable CONFIG_VIRTIO_BLK \
+    --enable CONFIG_VIRTIO_MMIO \
     --enable CONFIG_VIRTIO_NET \
     --enable CONFIG_VIRTIO_PCI \
     --enable CONFIG_WERROR
