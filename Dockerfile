@@ -69,6 +69,7 @@ RUN --mount=type=cache,id=apt-$arch-$kernel,target=/var/lib/apt \
     --enable CONFIG_VIRTIO_NET \
     --enable CONFIG_VIRTIO_PCI \
     --enable CONFIG_WERROR
+  echo +rpt-rpi >/tmp/build/localversion
   make O=/tmp/build -j 3 $IMAGE
 
   mkdir -p /media/sd/boot/firmware
