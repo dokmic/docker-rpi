@@ -123,6 +123,15 @@ COPY <<EOF /media/sd/etc/initramfs-tools/conf.d/modules
 MODULES=most
 EOF
 
+# Workaround to emulate WLAN.
+COPY <<EOF /media/sd/etc/modprobe.d/mac80211_hwsim.conf
+options mac80211_hwsim radios=1
+EOF
+
+COPY <<EOF /media/sd/etc/modules-load.d/mac80211_hwsim.conf
+mac80211_hwsim
+EOF
+
 FROM --platform=$BUILDPLATFORM scratch AS rootfs
 
 COPY --from=image /media/sd /media/sd
