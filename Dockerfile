@@ -6,7 +6,7 @@ ARG arch
 ARG kernel
 
 # hadolint ignore=DL3020
-ADD $kernel /kernel.tar.gz
+ADD $kernel /tmp/kernel.tar.gz
 
 WORKDIR /tmp/kernel
 
@@ -19,6 +19,7 @@ SHELL ["/bin/bash", "-ec"]
 RUN --mount=type=cache,id=apt-$arch-$kernel,target=/var/lib/apt \
     --mount=type=cache,id=build-$arch-$kernel,target=/tmp/build \
     --mount=type=cache,id=cache-$arch-$kernel,target=/var/cache \
+    --mount=type=cache,id=kernel-$arch-$kernel,target=/tmp/kernel \
     --mount=type=tmpfs,target=/var/log <<EOF
   case "$arch" in
     aarch64)
@@ -49,7 +50,7 @@ RUN --mount=type=cache,id=apt-$arch-$kernel,target=/var/lib/apt \
     libssl-dev \
     make
 
-  tar --strip-components=1 -xzf /kernel.tar.gz
+  [ -z "$(ls -A)" ] && tar --strip-components=1 -xzf /tmp/kernel.tar.gz
   make O=/tmp/build $DEFCONFIG
   scripts/config --file /tmp/build/.config \
     --enable CONFIG_9P_FS \
@@ -76,7 +77,6 @@ RUN --mount=type=cache,id=apt-$arch-$kernel,target=/var/lib/apt \
   cp /tmp/build/arch/$ARCH/boot/$IMAGE /media/sd/boot/firmware/qemu.img
 
   apt-get autoremove --purge -y
-  rm -rf /tmp/kernel
 EOF
 
 FROM --platform=$BUILDPLATFORM alpine:latest AS image
