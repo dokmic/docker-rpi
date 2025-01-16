@@ -15,5 +15,3 @@ services:
       - RPI_SSH
       - RPI_USER
     image: ${DOCKERHUB_REPOSITORY:-rpi}:latest
-    ports:
-      - 2222:22
