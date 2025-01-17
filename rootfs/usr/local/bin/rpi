@@ -60,15 +60,14 @@ while {true} {
   set reboot false
 
   set cmdline [list {*}[exec cat $config_cmdline]]
-
-  foreach parameter [list {*}$default_cmdline {*}$cmdline_command] {
+  foreach parameter [list {*}$default_cmdline {*}[if {$argc} {lreplace $argv 0 0 init}]] {
     lassign [split $parameter =] key
 
     while {[set index [lsearch -regexp $cmdline "^${key}(=.*)?$"]] > -1} {
       set cmdline [lreplace $cmdline $index $index]
     }
   }
-  lappend cmdline {*}$default_cmdline {*}$cmdline_command
+  set cmdline [join [list {*}$cmdline {*}$default_cmdline $cmdline_command] " "]
 
   spawn -noecho qemu-system-$arch \
     -serial mon:stdio \
