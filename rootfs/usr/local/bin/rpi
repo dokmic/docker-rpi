@@ -8,6 +8,32 @@ proc env {name {default ""}} {
   return $::env($name)
 }
 
+proc is_interactive {} {
+  return [expr {[catch {chan configure stdin -mode}] == 0}]
+}
+
+proc interact_or_expect args {
+  if {[is_interactive]} {
+    return [uplevel interact $args]
+  }
+
+  return [uplevel expect -timeout -1 [lmap arg {*}$args {
+    if {[lsearch -exact {-o -reset -nobuffer} $arg] > -1} {
+      continue
+    }
+
+    set arg
+  }]]
+}
+
+proc get_output {index type} {
+  if {[is_interactive]} {
+    return $::interact_out($index,$type)
+  }
+
+  return $::expect_out($index,$type)
+}
+
 set root /media/sd
 set boot $root/boot/firmware
 set config_cmdline $boot/cmdline.txt
@@ -86,7 +112,7 @@ while {true} {
     -append $cmdline
 
   match_max 1048576
-  interact {
+  interact_or_expect {
     -o -reset
 
     -nobuffer "reboot: Restarting system" {
@@ -95,14 +121,14 @@ while {true} {
       return
     }
 
-    -nobuffer -re {^\[\s*[\d\.]+\]\s+Kernel panic - not syncing: Requested init .* failed \(error (-?\d+)\)\.} {
-      set panic_code $interact_out(1,string)
+    -nobuffer -re {\[\s*[\d\.]+\]\s+Kernel panic - not syncing: Requested init .* failed \(error (-?\d+)\)\.} {
+      set panic_code [get_output 1 string]
       expect eof
       return
     }
 
-    -nobuffer -re {^\[\s*[\d\.]+\]\s+Kernel panic - not syncing: Attempted to kill init! exitcode=(0x[\da-f]+)[^\da-f]} {
-      set panic_code [expr "$interact_out(1,string)>>8"]
+    -nobuffer -re {\[\s*[\d\.]+\]\s+Kernel panic - not syncing: Attempted to kill init! exitcode=(0x[\da-f]+)[^\da-f]} {
+      set panic_code [expr [get_output 1 string]>>8]
       expect eof
       return
     }
