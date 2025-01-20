@@ -27,73 +27,52 @@ proc interact_or_expect args {
 }
 
 proc get_output {index type} {
-  if {[is_interactive]} {
-    return $::interact_out($index,$type)
+  upvar [expr {[is_interactive] ? "interact_out" : "expect_out"}] output
+
+  return $output($index,$type)
+}
+
+proc initialize {} {
+  if {![file exists $::config_ssh] && [string is true [env RPI_SSH true]]} {
+    exec touch $::config_ssh
   }
 
-  return $::expect_out($index,$type)
+  if {![file exists $::config_user]} {
+    exec echo "[env RPI_USER $::default_user]:[exec openssl passwd -1 -stdin <<[env RPI_PASSWORD $::default_password]]" >$::config_user
+  }
 }
 
-set root /media/sd
-set boot $root/boot/firmware
-set config_cmdline $boot/cmdline.txt
-set config_ssh $boot/ssh.txt
-set config_user $boot/userconf.txt
+proc get_cmdline {} {
+  set cmdline_user [string cat \
+    [if {$::argc} {subst init=}] \
+    [join [lmap arg $::argv {string cat \" [string map {\" \"\"} $arg] \"}] " "]
+  ]
 
-set default_arch aarch64
-set default_cpu cortex-a72
-set default_port 22/tcp
-set default_ram 1G
-set default_smp 4
-set default_user pi
-set default_password raspberry
-set default_cmdline {
-  console=ttyAMA0,115200
-  panic=-1
-  root=root
-  rootflags=cache=none,msize=512000,posixacl,trans=virtio,version=9p2000.L
-  rootfstype=9p
-  rootwait=no
-}
+  set cmdline_image [list {*}[exec cat $::config_cmdline]]
 
-set cmdline_command [string cat \
-  [if {$argc} {subst init=}] \
-  [join [lmap arg $argv {string cat \" [string map {\" \"\"} $arg] \"}] " "]
-]
-
-set arch [env RPI_ARCH $default_arch]
-
-set cpu [switch $arch {
-  arm {subst ""}
-  default {subst $default_cpu}
-}]
-
-set port [join [lmap port [list {*}[env RPI_PORT $default_port]] {
-  lassign [split [string trim $port] "/"] port protocol
-  subst ",hostfwd=$protocol\::$port-:$port"
-}] ""]
-
-if {![file exists $config_ssh] && [string is true [env RPI_SSH true]]} {
-  exec touch $config_ssh
-}
-
-if {![file exists $config_user]} {
-  exec echo "[env RPI_USER $default_user]:[exec openssl passwd -1 -stdin <<[env RPI_PASSWORD $default_password]]" >$config_user
-}
-
-while {true} {
-  set panic_code 0
-  set reboot false
-
-  set cmdline [list {*}[exec cat $config_cmdline]]
-  foreach parameter [list {*}$default_cmdline {*}[if {$argc} {lreplace $argv 0 0 init}]] {
+  foreach parameter [list {*}$::default_cmdline {*}[if {$::argc} {lreplace $::argv 0 0 init}]] {
     lassign [split $parameter =] key
 
-    while {[set index [lsearch -regexp $cmdline "^${key}(=.*)?$"]] > -1} {
-      set cmdline [lreplace $cmdline $index $index]
+    while {[set index [lsearch -regexp $cmdline_image "^${key}(=.*)?$"]] > -1} {
+      set cmdline_image [lreplace $cmdline_image $index $index]
     }
   }
-  set cmdline [join [list {*}$cmdline {*}$default_cmdline $cmdline_command] " "]
+
+  return [join [list {*}$cmdline_image {*}$::default_cmdline $cmdline_user] " "]
+}
+
+proc spawn_qemu {code_var} {
+  set arch [env RPI_ARCH $::default_arch]
+  set cpu [switch $arch {
+    arm {subst ""}
+    default {subst $::default_cpu}
+  }]
+  set port [join [lmap port [list {*}[env RPI_PORT $::default_port]] {
+    lassign [split [string trim $port] "/"] port protocol
+    subst ",hostfwd=$protocol\::$port-:$port"
+  }] ""]
+  set ram [env RPI_RAM $::default_ram]
+  set smp [env RPI_CPU $::default_smp]
 
   spawn -noecho qemu-system-$arch \
     -serial mon:stdio \
@@ -101,15 +80,18 @@ while {true} {
     -no-reboot \
     -machine virt \
     {*}[if {$cpu != ""} {subst "-cpu $cpu"}] \
-    -m [env RPI_RAM $default_ram] \
-    -smp [env RPI_CPU $default_smp] \
+    -m $ram \
+    -smp $smp \
     -device virtio-net-device,netdev=net0 \
     -netdev user,id=net0$port \
-    -kernel $boot/qemu.img \
-    -drive file=$boot/locale.img,format=raw \
-    -virtfs local,id=boot,mount_tag=boot,multidevs=remap,path=$boot,security_model=none,writeout=immediate \
-    -virtfs local,id=root,mount_tag=root,multidevs=remap,path=$root,security_model=none,writeout=immediate \
-    -append $cmdline
+    -kernel $::boot/qemu.img \
+    -drive file=$::boot/locale.img,format=raw \
+    -virtfs local,id=boot,mount_tag=boot,multidevs=remap,path=$::boot,security_model=none,writeout=immediate \
+    -virtfs local,id=root,mount_tag=root,multidevs=remap,path=$::root,security_model=none,writeout=immediate \
+    -append [get_cmdline]
+
+  set panic_code 0
+  set reboot false
 
   match_max 1048576
   interact_or_expect {
@@ -134,13 +116,46 @@ while {true} {
     }
   }
 
-  if {$panic_code != 0} {
-    exit $panic_code
-  }
-
   lassign [wait] pid spawn_id os_error exit_code
 
-  if {$exit_code != 0 || !$reboot} {
-    exit $exit_code
+  upvar $code_var code
+  if {$panic_code != 0} {
+    set code $panic_code
+
+    return false
   }
+
+  if {$exit_code != 0 || !$reboot} {
+    set code $exit_code
+
+    return false
+  }
+
+  return true
 }
+
+set root /media/sd
+set boot $root/boot/firmware
+set config_cmdline $boot/cmdline.txt
+set config_ssh $boot/ssh.txt
+set config_user $boot/userconf.txt
+
+set default_arch aarch64
+set default_cpu cortex-a72
+set default_port 22/tcp
+set default_ram 1G
+set default_smp 4
+set default_user pi
+set default_password raspberry
+set default_cmdline {
+  console=ttyAMA0,115200
+  panic=-1
+  root=root
+  rootflags=cache=none,msize=512000,posixacl,trans=virtio,version=9p2000.L
+  rootfstype=9p
+  rootwait=no
+}
+
+initialize
+while {[spawn_qemu code]} {}
+exit $code
