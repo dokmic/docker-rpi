@@ -6,11 +6,38 @@ on:
   workflow_dispatch:
 
 jobs:
+  prepare:
+    name: Prepare
+    runs-on: ubuntu-latest
+    outputs:
+      targets: ${{ steps.targets.outputs.targets }}
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare overrides
+        run: |
+          echo "$DOCKER_BAKE_OVERRIDE" >docker-bake.override.hcl
+        env:
+          DOCKER_BAKE_OVERRIDE: ${{ vars.DOCKER_BAKE_OVERRIDE }}
+
+      - name: Get targets
+        id: targets
+        uses: docker/bake-action/subaction/list-targets@v6
+
   publish:
-    name: Publish
+    name: ${{ matrix.target }}
+    needs:
+      - prepare
     permissions:
       contents: read
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: ${{ fromJson(needs.prepare.outputs.targets) }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -31,10 +58,12 @@ jobs:
           DOCKER_BAKE_OVERRIDE: ${{ vars.DOCKER_BAKE_OVERRIDE }}
 
       - name: Bake image
-        uses: docker/bake-action@v5
+        uses: docker/bake-action@v6
         with:
           allow: security.insecure
           push: true
+          source: .
+          targets: ${{ matrix.target }}
         env:
           DOCKERHUB_REPOSITORY: ${{ secrets.DOCKERHUB_REPOSITORY }}
 
