@@ -48,7 +48,9 @@ RUN --mount=type=cache,id=apt-$arch-$kernel,target=/var/lib/apt \
     libc6-dev \
     libc6-dev-arm64-cross \
     libssl-dev \
-    make
+    kmod \
+    make \
+    xz-utils
 
   [ -z "$(ls -A)" ] && tar --strip-components=1 -xzf /tmp/kernel.tar.gz
   make O=/tmp/build $DEFCONFIG
@@ -71,7 +73,9 @@ RUN --mount=type=cache,id=apt-$arch-$kernel,target=/var/lib/apt \
     --enable CONFIG_VIRTIO_PCI \
     --enable CONFIG_WERROR
   echo +rpt-rpi >/tmp/build/localversion
-  make O=/tmp/build -j 3 $IMAGE
+  make O=/tmp/build -j 3 $IMAGE modules
+  make O=/tmp/build INSTALL_MOD_PATH=/media/sd/usr modules_install
+  find /media/sd/usr/lib/modules -type l -name build -delete
 
   mkdir -p /media/sd/boot/firmware
   cp /tmp/build/arch/$ARCH/boot/$IMAGE /media/sd/boot/firmware/qemu.img
