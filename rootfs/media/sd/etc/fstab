@@ -1,9 +1,8 @@
 proc /proc proc defaults 0 0
 
-# The `cache` option must be set to `none` on the latest kernels.
-# @see https://gitlab.com/qemu-project/qemu/-/issues/2205
 boot /boot/firmware 9p cache=none,msize=512000,posixacl,trans=virtio,version=9p2000.L 0 2
-root / 9p cache=none,msize=512000,posixacl,trans=virtio,version=9p2000.L 0 1
+cache /var/cache 9p cache=none,msize=512000,posixacl,trans=virtio,version=9p2000.L 0 2
+root / 9p cache=mmap,msize=512000,posixacl,trans=virtio,version=9p2000.L 0 1
 
 # Workaround for `apt` commands failing to determine file size.
 # @see https://wiki.qemu.org/Documentation/9p_root_fs

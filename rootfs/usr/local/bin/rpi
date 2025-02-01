@@ -87,6 +87,7 @@ proc spawn_qemu {code_var} {
     -kernel $::boot/qemu.img \
     -drive file=$::boot/locale.img,format=raw \
     -virtfs local,id=boot,mount_tag=boot,multidevs=remap,path=$::boot,security_model=none,writeout=immediate \
+    -virtfs local,id=cache,mount_tag=cache,multidevs=remap,path=$::root/var/cache,security_model=none,writeout=immediate \
     -virtfs local,id=root,mount_tag=root,multidevs=remap,path=$::root,security_model=none,writeout=immediate \
     -append [get_cmdline]
 
@@ -151,7 +152,7 @@ set default_cmdline {
   console=ttyAMA0,115200
   panic=-1
   root=root
-  rootflags=cache=none,msize=512000,posixacl,trans=virtio,version=9p2000.L
+  rootflags=cache=mmap,msize=512000,posixacl,trans=virtio,version=9p2000.L
   rootfstype=9p
   rootwait=no
 }
