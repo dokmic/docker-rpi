@@ -142,49 +142,16 @@ COPY --from=image /media/sd /media/sd
 COPY --from=kernel /media/sd /media/sd
 COPY /rootfs /
 
-# https://gitlab.com/qemu-project/qemu/-/commit/d06a9d843fb65351e0e4dc42ba0c404f01ea92b3
-# https://gitlab.com/qemu-project/qemu/-/issues/2337
-FROM alpine:latest AS qemu
-
-ARG qemu=https://gitlab.com/qemu-project/qemu/-/archive/master/qemu-master.tar.gz
-ARG qemu_version=9.2.1
-
-ADD https://gitlab.alpinelinux.org/alpine/aports/-/archive/master/aports-master.tar.gz?path=community/qemu /tmp/aports.tar.gz
-
-WORKDIR /root/aports
-SHELL ["/bin/ash", "-ec"]
-
-RUN <<EOF
-  apk add --no-cache --virtual=.tools \
-    alpine-sdk
-EOF
-
-RUN --mount=type=cache,id=aports-$qemu,target=/root/aports <<EOF
-  USER=root abuild-keygen --append -n
-  cp /root/.abuild/*.rsa.pub /etc/apk/keys
-
-  tar  --strip-components=3 -xzf /tmp/aports.tar.gz
-  sed \
-      -e "s|pkgver=.*|pkgver=$qemu_version|g" \
-      -e "s|https://download\.qemu\.org/qemu-.*\.tar\.xz|$qemu|g" \
-      -re "s|(pkgname=.*)|\1\nbuilddir=\"\$srcdir\"/\$pkgname-master|g" \
-      -i APKBUILD
-
-  abuild -F checksum deps
-  abuild -F
-EOF
-
 FROM alpine:latest
 
 ARG arch
 
 ENV RPI_ARCH=$arch
 
-RUN --mount=type=bind,from=qemu,source=/root/packages/root,target=/root/packages \
-  apk add --no-cache \
+RUN apk add --no-cache \
     expect \
     openssl \
-    --repository=/root/packages --allow-untrusted qemu-system-$arch
+    qemu-system-$arch
 
 COPY --from=rootfs / /
 
