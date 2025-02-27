@@ -1,50 +1,27 @@
 # syntax=docker/dockerfile:1.3-labs
 
-FROM --platform=$BUILDPLATFORM ubuntu:latest AS kernel
+FROM --platform=$BUILDPLATFORM alpine:latest AS kernel-src
 
-ARG arch
 ARG kernel
+WORKDIR /src
 
 # hadolint ignore=DL3020
 ADD $kernel /tmp/kernel.tar.gz
+RUN tar --strip-components=1 -xf /tmp/kernel.tar.gz
+COPY src/kernel .
 
-WORKDIR /tmp/kernel
+FROM --platform=$BUILDPLATFORM ubuntu:latest AS kernel
 
-SHELL ["/bin/bash", "-ec"]
-
-# https://github.com/raspberrypi/linux/blob/HEAD/.github/workflows/kernel-build.yml
-# https://wiki.qemu.org/Documentation/9psetup#Preparation
-# https://superuser.com/a/1301973
-# hadolint ignore=SC2086
-RUN --mount=type=cache,id=apt-$arch-$kernel,target=/var/lib/apt \
-    --mount=type=cache,id=build-$arch-$kernel,target=/tmp/build \
-    --mount=type=cache,id=cache-$arch-$kernel,target=/var/cache \
-    --mount=type=cache,id=kernel-$arch-$kernel,target=/tmp/kernel \
-    --mount=type=tmpfs,target=/var/log <<EOF
-  case "$arch" in
-    aarch64)
-      export ARCH=arm64
-      export DEFCONFIG=bcm2711_defconfig
-      export GCC=gcc-aarch64-linux-gnu
-      export IMAGE=Image.gz
-      export CROSS_COMPILE=aarch64-linux-gnu-
-      ;;
-    arm)
-      export ARCH=arm
-      export DEFCONFIG=bcm2711_defconfig
-      export GCC=gcc-arm-linux-gnueabihf
-      export IMAGE=zImage
-      export CROSS_COMPILE=arm-linux-gnueabihf-
-      ;;
-  esac
-
-  apt-get update
-  apt-get install --mark-auto --no-install-recommends -y \
+RUN --mount=type=cache,id=apt,target=/var/lib/apt,sharing=locked \
+    --mount=type=cache,id=cache,target=/var/cache,sharing=locked \
+    --mount=type=tmpfs,target=/var/log \
+  apt-get update && apt-get install --no-install-recommends -y \
     bc \
     bison \
     flex \
     gcc \
-    $GCC \
+    gcc-aarch64-linux-gnu \
+    gcc-arm-linux-gnueabihf \
     libc6-dev \
     libc6-dev-arm64-cross \
     libssl-dev \
@@ -52,35 +29,47 @@ RUN --mount=type=cache,id=apt-$arch-$kernel,target=/var/lib/apt \
     make \
     xz-utils
 
-  [ -z "$(ls -A)" ] && tar --strip-components=1 -xzf /tmp/kernel.tar.gz
-  make O=/tmp/build $DEFCONFIG
-  scripts/config --file /tmp/build/.config \
-    --enable CONFIG_9P_FS \
-    --enable CONFIG_9P_FS_POSIX_ACL \
-    --enable CONFIG_9P_FS_SECURITY \
-    --enable CONFIG_BINFMT_MISC \
-    --enable CONFIG_NET_9P \
-    --enable CONFIG_NET_9P_VIRTIO \
-    --enable CONFIG_NETWORK_FILESYSTEMS \
-    --enable CONFIG_PCI \
-    --enable CONFIG_PCI_HOST_COMMON \
-    --enable CONFIG_PCI_HOST_GENERIC \
-    --disable CONFIG_PCI_MSI \
-    --disable CONFIG_PCI_MSI_IRQ_DOMAIN \
-    --enable CONFIG_VIRTIO_BLK \
-    --enable CONFIG_VIRTIO_MMIO \
-    --enable CONFIG_VIRTIO_NET \
-    --enable CONFIG_VIRTIO_PCI \
-    --enable CONFIG_WERROR
-  echo +rpt-rpi >/tmp/build/localversion
-  make O=/tmp/build -j 3 $IMAGE modules
-  make O=/tmp/build INSTALL_MOD_PATH=/media/sd/usr modules_install
-  find /media/sd/usr/lib/modules -type l -name build -delete
+ARG arch
+ARG kernel
 
-  mkdir -p /media/sd/boot/firmware
-  cp /tmp/build/arch/$ARCH/boot/$IMAGE /media/sd/boot/firmware/qemu.img
+ENV arch_aarch64=arm64
+ENV arch_arm=arm
+ENV arch_ref=arch_${arch}
 
-  apt-get autoremove --purge -y
+ENV defconfig_aarch64=bcm2711_defconfig
+ENV defconfig_arm=bcm2711_defconfig
+ENV defconfig=defconfig_${arch}
+
+ENV cross_compile_aarch64=aarch64-linux-gnu-
+ENV cross_compile_arm=arm-linux-gnueabihf-
+ENV cross_compile=cross_compile_${arch}
+
+ENV image_aarch64=Image.gz
+ENV image_arm=zImage
+ENV image=image_${arch}
+
+ENV INSTALL_MOD_PATH=/media/sd/usr
+ENV KBUILD_OUTPUT=/tmp/build
+
+WORKDIR $KBUILD_OUTPUT
+
+SHELL ["/bin/bash", "-ec"]
+
+# https://github.com/raspberrypi/linux/blob/HEAD/.github/workflows/kernel-build.yml
+# hadolint ignore=SC2086
+RUN \
+  --mount=type=bind,from=kernel-src,source=/src,target=/src \
+  --mount=type=cache,id=build-$arch-$kernel,target=. \
+<<EOF
+  export ARCH=${!arch_ref}
+  export CROSS_COMPILE=${!cross_compile}
+
+  make --directory=/src ${!defconfig}
+  /src/scripts/kconfig/merge_config.sh -m .config /src/qemu.config
+  make -j 3 --directory=/src olddefconfig ${!image} modules modules_install
+
+  find $INSTALL_MOD_PATH/lib/modules -type l -name build -delete
+  install -D --mode=0644 arch/$ARCH/boot/${!image} /media/sd/boot/firmware/qemu.img
 EOF
 
 FROM --platform=$BUILDPLATFORM alpine:latest AS image
@@ -140,7 +129,7 @@ FROM --platform=$BUILDPLATFORM scratch AS rootfs
 
 COPY --from=image /media/sd /media/sd
 COPY --from=kernel /media/sd /media/sd
-COPY /rootfs /
+COPY src/rootfs /
 
 FROM alpine:latest
 
