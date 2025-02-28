@@ -1,20 +1,12 @@
 # syntax=docker/dockerfile:1.3-labs
 
-FROM --platform=$BUILDPLATFORM alpine:latest AS kernel-src
+FROM --platform=$BUILDPLATFORM ubuntu:latest AS builder
 
-ARG kernel
-WORKDIR /src
-
-# hadolint ignore=DL3020
-ADD $kernel /tmp/kernel.tar.gz
-RUN tar --strip-components=1 -xf /tmp/kernel.tar.gz
-COPY src/kernel .
-
-FROM --platform=$BUILDPLATFORM ubuntu:latest AS kernel
-
-RUN --mount=type=cache,id=apt,target=/var/lib/apt,sharing=locked \
-    --mount=type=cache,id=cache,target=/var/cache,sharing=locked \
-    --mount=type=tmpfs,target=/var/log \
+RUN \
+  --mount=type=cache,id=apt,target=/var/lib/apt,sharing=locked \
+  --mount=type=cache,id=cache,target=/var/cache,sharing=locked \
+  --mount=type=tmpfs,target=/var/lib/apt/lists \
+  --mount=type=tmpfs,target=/var/log \
   apt-get update && apt-get install --no-install-recommends -y \
     bc \
     bison \
@@ -29,48 +21,39 @@ RUN --mount=type=cache,id=apt,target=/var/lib/apt,sharing=locked \
     make \
     xz-utils
 
-ARG arch
+ONBUILD ARG arch
+ONBUILD ENV $arch true
+ONBUILD ENV ARCH ${aarch64:+arm64}${arm:+arm}
+ONBUILD ENV CROSS_COMPILE ${aarch64:+aarch64-linux-gnu-}${arm:+arm-linux-gnueabihf-}
+ONBUILD ENV KBUILD_OUTPUT /tmp/build
+ONBUILD WORKDIR $KBUILD_OUTPUT
+
+FROM --platform=$BUILDPLATFORM alpine:latest AS kernel-src
+
 ARG kernel
+WORKDIR /src
 
-ENV arch_aarch64=arm64
-ENV arch_arm=arm
-ENV arch_ref=arch_${arch}
+# hadolint ignore=DL3020
+ADD $kernel /tmp/kernel.tar.gz
+RUN tar --strip-components=1 -xf /tmp/kernel.tar.gz
+COPY src/kernel .
 
-ENV defconfig_aarch64=bcm2711_defconfig
-ENV defconfig_arm=bcm2711_defconfig
-ENV defconfig=defconfig_${arch}
+FROM --platform=$BUILDPLATFORM builder AS kernel
 
-ENV cross_compile_aarch64=aarch64-linux-gnu-
-ENV cross_compile_arm=arm-linux-gnueabihf-
-ENV cross_compile=cross_compile_${arch}
-
-ENV image_aarch64=Image.gz
-ENV image_arm=zImage
-ENV image=image_${arch}
-
-ENV INSTALL_MOD_PATH=/media/sd/usr
-ENV KBUILD_OUTPUT=/tmp/build
-
-WORKDIR $KBUILD_OUTPUT
-
-SHELL ["/bin/bash", "-ec"]
+ARG kernel
+ENV defconfig ${aarch64:+bcm2711_defconfig}${arm:+bcm2711_defconfig}
+ENV image ${aarch64:+Image.gz}${arm:+zImage}
+ENV INSTALL_MOD_PATH /media/sd/usr
 
 # https://github.com/raspberrypi/linux/blob/HEAD/.github/workflows/kernel-build.yml
-# hadolint ignore=SC2086
 RUN \
   --mount=type=bind,from=kernel-src,source=/src,target=/src \
   --mount=type=cache,id=build-$arch-$kernel,target=. \
-<<EOF
-  export ARCH=${!arch_ref}
-  export CROSS_COMPILE=${!cross_compile}
-
-  make --directory=/src ${!defconfig}
-  /src/scripts/kconfig/merge_config.sh -m .config /src/qemu.config
-  make -j 3 --directory=/src olddefconfig ${!image} modules modules_install
-
-  find $INSTALL_MOD_PATH/lib/modules -type l -name build -delete
-  install -D --mode=0644 arch/$ARCH/boot/${!image} /media/sd/boot/firmware/qemu.img
-EOF
+  make --directory=/src $defconfig \
+  && /src/scripts/kconfig/merge_config.sh -m .config /src/qemu.config \
+  && make -j 3 --directory=/src olddefconfig $image modules modules_install \
+  && find $INSTALL_MOD_PATH/lib/modules -type l -name build -delete \
+  && install -D --mode=0644 "arch/$ARCH/boot/$image" /media/sd/boot/firmware/qemu.img
 
 FROM --platform=$BUILDPLATFORM alpine:latest AS image
 
