@@ -5,6 +5,7 @@ services:
         - arch=$ARCH
         - image=$IMAGE
         - kernel=$KERNEL
+        - uboot=$UBOOT
       entitlements:
         - security.insecure
     environment:

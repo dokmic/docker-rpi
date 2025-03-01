@@ -19,6 +19,7 @@ target "rpi" {
     arch = item.arch
     image = item.image
     kernel = item.kernel
+    uboot = item.uboot
   }
 
   cache-from = [

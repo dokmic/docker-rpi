@@ -1,0 +1,15 @@
+qfw load $kernel_addr_r $ramdisk_addr_r
+fatload virtio 0:1 $loadaddr cmdline.txt
+setexpr.s cmdline *$loadaddr
+
+for arg in $bootargs; do
+  setexpr key gsub "^([^=]+)(=.*)?$" "\\1" $arg
+  setexpr cmdline gsub "$key(=[^ ]*)?[ $]" "" "$cmdline"
+done
+
+if itest.s "$cmdline" != ""; then
+  setenv bootargs "$cmdline $bootargs"
+fi
+
+# https://qemu-project.gitlab.io/qemu/system/arm/virt.html
+booti $kernel_addr_r - $fdt_addr

@@ -55,6 +55,39 @@ RUN \
   && find $INSTALL_MOD_PATH/lib/modules -type l -name build -delete \
   && install -D --mode=0644 "arch/$ARCH/boot/$image" /media/sd/boot/firmware/qemu.img
 
+FROM --platform=$BUILDPLATFORM alpine:latest AS uboot-src
+
+ARG uboot
+WORKDIR /src
+
+# hadolint ignore=DL3020
+ADD $uboot /tmp/uboot.tar.bz2
+RUN tar --strip-components=1 -xf /tmp/uboot.tar.bz2
+COPY src/uboot .
+
+FROM --platform=$BUILDPLATFORM builder AS uboot
+
+RUN \
+  --mount=type=cache,id=apt,target=/var/lib/apt,sharing=locked \
+  --mount=type=cache,id=cache,target=/var/cache,sharing=locked \
+  --mount=type=tmpfs,target=/var/lib/apt/lists \
+  --mount=type=tmpfs,target=/var/log \
+  apt-get update && apt-get install --no-install-recommends -y \
+    libgnutls28-dev \
+    u-boot-tools
+
+ARG uboot
+RUN \
+  --mount=type=bind,from=uboot-src,source=/src,target=/src \
+  --mount=type=cache,id=build-$arch-$uboot,target=. \
+  make --directory=/src "qemu_${ARCH}_defconfig" \
+  && /src/scripts/kconfig/merge_config.sh -m .config /src/qemu.config \
+  && make olddefconfig u-boot.bin \
+  && mkimage -A "$ARCH" -T script -C none -d /src/boot.scr boot.scr \
+  && truncate -s $((0x200000)) u-boot.bin \
+  && cat boot.scr >>u-boot.bin \
+  && install -D --mode=0644 u-boot.bin /media/sd/boot/firmware/uboot.img
+
 FROM --platform=$BUILDPLATFORM alpine:latest AS image
 
 ARG image
@@ -112,6 +145,7 @@ FROM --platform=$BUILDPLATFORM scratch AS rootfs
 
 COPY --from=image /media/sd /media/sd
 COPY --from=kernel /media/sd /media/sd
+COPY --from=uboot /media/sd /media/sd
 COPY src/rootfs /
 
 FROM alpine:latest
