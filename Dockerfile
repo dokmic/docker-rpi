@@ -44,6 +44,7 @@ ARG kernel
 ENV defconfig ${aarch64:+bcm2711_defconfig}${arm:+bcm2711_defconfig}
 ENV image ${aarch64:+Image.gz}${arm:+zImage}
 ENV INSTALL_MOD_PATH /media/sd/usr
+ENV INSTALL_MOD_STRIP 1
 
 # https://github.com/raspberrypi/linux/blob/HEAD/.github/workflows/kernel-build.yml
 RUN \
