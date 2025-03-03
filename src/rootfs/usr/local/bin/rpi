@@ -68,11 +68,11 @@ proc spawn_qemu {code_var} {
     {*}[if {$cpu != ""} {subst "-cpu $cpu"}] \
     -m $ram \
     -smp $smp \
-    -bios $::boot/uboot.img \
+    -bios $::bios \
     -device virtio-net-device,netdev=net0 \
     -drive file=fat:rw:$::boot,format=raw \
-    -drive file=$::boot/locale.img,format=raw \
-    -kernel $::boot/qemu.img \
+    -drive file=$::locale,format=raw \
+    -kernel $::kernel \
     -netdev user,id=net0$port \
     -virtfs local,id=boot,mount_tag=boot,multidevs=remap,path=$::boot,security_model=none,writeout=immediate \
     -virtfs local,id=cache,mount_tag=cache,multidevs=remap,path=$::root/var/cache,security_model=none,writeout=immediate \
@@ -127,6 +127,9 @@ set root /media/sd
 set boot $root/boot/firmware
 set config_ssh $boot/ssh.txt
 set config_user $boot/userconf.txt
+set bios /usr/local/share/rpi/bios.img
+set kernel /usr/local/share/rpi/kernel.img
+set locale /var/lib/rpi/locale.img
 
 set default_arch aarch64
 set default_cpu cortex-a72
