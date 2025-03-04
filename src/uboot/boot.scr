@@ -1,5 +1,5 @@
 qfw load $kernel_addr_r $ramdisk_addr_r
-fatload virtio 0:1 $loadaddr cmdline.txt
+load hostfs - $loadaddr /media/sd/boot/firmware/cmdline.txt
 setexpr.s cmdline *$loadaddr
 
 for arg in $bootargs; do

@@ -32,99 +32,9 @@ proc get_output {index type} {
   return $output($index,$type)
 }
 
-proc initialize {} {
-  if {![file exists $::config_ssh] && [string is true [env RPI_SSH true]]} {
-    exec touch $::config_ssh
-  }
-
-  if {![file exists $::config_user]} {
-    exec echo "[env RPI_USER $::default_user]:[exec openssl passwd -1 -stdin <<[env RPI_PASSWORD $::default_password]]" >$::config_user
-  }
-}
-
-proc spawn_qemu {code_var} {
-  set arch [env RPI_ARCH $::default_arch]
-  set cmdline [string cat \
-    [join $::default_cmdline " "] \
-    [if {$::argc} {subst " init="}] \
-    [join [lmap arg $::argv {string cat \" [string map {\" \"\"} $arg] \"}] " "]
-  ]
-  set cpu [switch $arch {
-    arm {subst ""}
-    default {subst $::default_cpu}
-  }]
-  set port [join [lmap port [list {*}[env RPI_PORT $::default_port]] {
-    lassign [split [string trim $port] "/"] port protocol
-    subst ",hostfwd=$protocol\::$port-:$port"
-  }] ""]
-  set ram [env RPI_RAM $::default_ram]
-  set smp [env RPI_CPU $::default_smp]
-
-  spawn -noecho qemu-system-$arch \
-    -serial mon:stdio \
-    -nographic \
-    -no-reboot \
-    -machine virt \
-    {*}[if {$cpu != ""} {subst "-cpu $cpu"}] \
-    -m $ram \
-    -smp $smp \
-    -bios $::bios \
-    -device virtio-net-device,netdev=net0 \
-    -drive file=fat:rw:$::boot,format=raw \
-    -drive file=$::locale,format=raw \
-    -kernel $::kernel \
-    -netdev user,id=net0$port \
-    -virtfs local,id=boot,mount_tag=boot,multidevs=remap,path=$::boot,security_model=none,writeout=immediate \
-    -virtfs local,id=cache,mount_tag=cache,multidevs=remap,path=$::root/var/cache,security_model=none,writeout=immediate \
-    -virtfs local,id=root,mount_tag=root,multidevs=remap,path=$::root,security_model=none,writeout=immediate \
-    -append $cmdline
-
-  set panic_code 0
-  set reboot false
-
-  match_max 1048576
-  interact_or_expect {
-    -o -reset
-
-    -nobuffer "reboot: Restarting system" {
-      set reboot true
-      expect eof
-      return
-    }
-
-    -nobuffer -re {\[\s*[\d\.]+\]\s+Kernel panic - not syncing: Requested init .* failed \(error (-?\d+)\)\.} {
-      set panic_code [get_output 1 string]
-      expect eof
-      return
-    }
-
-    -nobuffer -re {\[\s*[\d\.]+\]\s+Kernel panic - not syncing: Attempted to kill init! exitcode=(0x[\da-f]+)[^\da-f]} {
-      set panic_code [expr [get_output 1 string]>>8]
-      expect eof
-      return
-    }
-  }
-
-  lassign [wait] pid spawn_id os_error exit_code
-
-  upvar $code_var code
-  if {$panic_code != 0} {
-    set code $panic_code
-
-    return false
-  }
-
-  if {$exit_code != 0 || !$reboot} {
-    set code $exit_code
-
-    return false
-  }
-
-  return true
-}
-
 set root /media/sd
 set boot $root/boot/firmware
+set cache $root/var/cache
 set config_ssh $boot/ssh.txt
 set config_user $boot/userconf.txt
 set bios /usr/local/share/rpi/bios.img
@@ -147,6 +57,74 @@ set default_cmdline {
   rootwait=no
 }
 
-initialize
-while {[spawn_qemu code]} {}
+set arch [env RPI_ARCH $::default_arch]
+set cmdline [string cat \
+  [join $default_cmdline " "] \
+  [if {$argc} {subst " init="}] \
+  [join [lmap arg $argv {string cat \" [string map {\" \"\"} $arg] \"}] " "]
+]
+set cpu [switch $arch {
+  arm {subst ""}
+  default {subst $default_cpu}
+}]
+set port [join [lmap port [list {*}[env RPI_PORT $default_port]] {
+  lassign [split [string trim $port] "/"] port protocol
+  subst ",hostfwd=$protocol\::$port-:$port"
+}] ""]
+set ram [env RPI_RAM $default_ram]
+set smp [env RPI_CPU $default_smp]
+
+if {![file exists $::config_ssh] && [string is true [env RPI_SSH true]]} {
+  exec touch $config_ssh
+}
+
+if {![file exists $::config_user]} {
+  exec echo "[env RPI_USER $default_user]:[exec openssl passwd -1 -stdin <<[env RPI_PASSWORD $default_password]]" >$config_user
+}
+
+spawn -noecho qemu-system-$arch \
+  -action panic=exit-failure \
+  -machine virt \
+  -nographic \
+  -semihosting \
+  -serial mon:stdio \
+  {*}[if {$cpu != ""} {subst "-cpu $cpu"}] \
+  -m $ram \
+  -smp $smp \
+  -bios $bios \
+  -device pvpanic-pci \
+  -device virtio-net-device,netdev=net0 \
+  -drive file=$::locale,format=raw \
+  -kernel $kernel \
+  -netdev user,id=net0$port \
+  -virtfs local,id=boot,mount_tag=boot,multidevs=remap,path=$boot,security_model=none,writeout=immediate \
+  -virtfs local,id=cache,mount_tag=cache,multidevs=remap,path=$cache,security_model=none,writeout=immediate \
+  -virtfs local,id=root,mount_tag=root,multidevs=remap,path=$root,security_model=none,writeout=immediate \
+  -append $cmdline
+
+set panic_code 0
+
+match_max 1048576
+interact_or_expect {
+  -o -reset
+
+  -nobuffer -re {\[\s*[\d\.]+\]\s+Kernel panic - not syncing: Requested init .* failed \(error (-?\d+)\)\.} {
+    set panic_code [get_output 1 string]
+    expect eof
+    return
+  }
+
+  -nobuffer -re {\[\s*[\d\.]+\]\s+Kernel panic - not syncing: Attempted to kill init! exitcode=(0x[\da-f]+)[^\da-f]} {
+    set panic_code [expr [get_output 1 string]>>8]
+    expect eof
+    return
+  }
+}
+
+lassign [wait] pid spawn_id os_error code
+
+if {$panic_code != 0} {
+  set code $panic_code
+}
+
 exit $code
