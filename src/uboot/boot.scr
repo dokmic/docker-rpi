@@ -1,15 +1,20 @@
 qfw load $kernel_addr_r $ramdisk_addr_r
-load hostfs - $loadaddr /media/sd/boot/firmware/cmdline.txt
-setexpr.s cmdline *$loadaddr
 
 for arg in $bootargs; do
-  setexpr key gsub "^([^=]+)(=.*)?$" "\\1" $arg
-  setexpr cmdline gsub "$key(=[^ ]*)?[ $]" "" "$cmdline"
+  setexpr key gsub "^([^=]+)(=.*)?" "\\1" $arg
+  setexpr value gsub "^[^=]+(=(.*))?$" "\\2" $arg
+
+  if itest.s "$key" == "extends"; then
+    load hostfs - $loadaddr $value
+    setexpr.s extends *$loadaddr
+    setenv head "$head $extends"
+  else
+    setexpr head gsub "$key(=[^ ]*)?[ $]" "" "$head"
+    setenv tail "$tail $arg"
+  fi
 done
 
-if itest.s "$cmdline" != ""; then
-  setenv bootargs "$cmdline $bootargs"
-fi
+setenv bootargs "$head $tail"
 
 # https://qemu-project.gitlab.io/qemu/system/arm/virt.html
 booti $kernel_addr_r - $fdt_addr

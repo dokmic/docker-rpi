@@ -49,6 +49,7 @@ set default_smp 4
 set default_user pi
 set default_password raspberry
 set default_cmdline {
+  extends=/media/sd/boot/firmware/cmdline.txt
   console=ttyAMA0,115200
   panic=-1
   root=root
