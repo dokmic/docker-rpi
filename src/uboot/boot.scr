@@ -1,7 +1,8 @@
 qfw load $kernel_addr_r $ramdisk_addr_r
 
 for arg in $bootargs; do
-  setexpr key gsub "^([^=]+)(=.*)?" "\\1" $arg
+  setexpr flag gsub "^(!?).+$" "\\1" $arg
+  setexpr key gsub "^!?([^=]+)(=.*)?" "\\1" $arg
   setexpr value gsub "^[^=]+(=(.*))?$" "\\2" $arg
 
   if itest.s "$key" == "extends"; then
@@ -10,7 +11,10 @@ for arg in $bootargs; do
     setenv head "$head $extends"
   else
     setexpr head gsub "$key(=[^ ]*)?[ $]" "" "$head"
-    setenv tail "$tail $arg"
+
+    if itest.s "$flag" != "!"; then
+      setenv tail "$tail $arg"
+    fi
   fi
 done
 

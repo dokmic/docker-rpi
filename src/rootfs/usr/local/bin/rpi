@@ -55,7 +55,8 @@ set default_cmdline {
   root=root
   rootflags=cache=mmap,msize=512000,posixacl,trans=virtio,version=9p2000.L
   rootfstype=9p
-  rootwait=no
+  !rootwait
+  !fsck.repair
 }
 
 set arch [env RPI_ARCH $::default_arch]
