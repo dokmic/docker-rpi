@@ -32,7 +32,7 @@ proc get_output {index type} {
   return $output($index,$type)
 }
 
-set root /media/sd
+set root [env RPI_ROOT /media/sd]
 set boot $root/boot/firmware
 set cache $root/var/cache
 set config_ssh $boot/ssh.txt
@@ -48,8 +48,8 @@ set default_ram 1G
 set default_smp 4
 set default_user pi
 set default_password raspberry
-set default_cmdline {
-  extends=/media/sd/boot/firmware/cmdline.txt
+set default_cmdline "
+  extends=$boot/cmdline.txt
   console=ttyAMA0,115200
   panic=-1
   root=root
@@ -57,7 +57,7 @@ set default_cmdline {
   rootfstype=9p
   !rootwait
   !fsck.repair
-}
+"
 
 set arch [env RPI_ARCH $::default_arch]
 set cmdline [string cat \
@@ -81,7 +81,7 @@ if {![file exists $::config_ssh] && [string is true [env RPI_SSH true]]} {
 }
 
 if {![file exists $::config_user]} {
-  exec echo "[env RPI_USER $default_user]:[exec openssl passwd -1 -stdin <<[env RPI_PASSWORD $default_password]]" >$config_user
+  exec echo "[env RPI_USER $default_user]:[exec openssl passwd -1 -stdin <<[env RPI_PASSWORD $default_password]]" | tee $config_user >/dev/null
 }
 
 spawn -noecho qemu-system-$arch \

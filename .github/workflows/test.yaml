@@ -7,8 +7,8 @@ on:
     branches: [master]
 
 jobs:
-  linter:
-    name: Linter
+  tests:
+    name: Tests
     permissions:
       contents: read
     runs-on: ubuntu-latest
@@ -16,5 +16,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Run Hadolint
+      - name: Run Linter
         uses: hadolint/hadolint-action@v3.1.0
+
+      - name: Set up Docker Compose
+        uses: docker/setup-compose-action@v1
+
+      - name: Run Unit Tests
+        run: docker compose run --build --rm bats test
