@@ -146,7 +146,6 @@ ARG arch
 ENV RPI_ARCH=$arch
 
 RUN apk add --no-cache \
-  expect \
   openssl \
   qemu-system-$arch
 

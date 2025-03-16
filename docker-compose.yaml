@@ -18,11 +18,6 @@ services:
     image: ${DOCKERHUB_REPOSITORY:-rpi}:latest
 
   bats:
-    build:
-      dockerfile_inline: |
-        FROM bats/bats:latest
-        RUN apk add --no-cache expect
-    entrypoint: [bats]
-    image: ${DOCKERHUB_REPOSITORY:-rpi}:test
+    image: bats/bats:latest
     volumes:
       - .:/code

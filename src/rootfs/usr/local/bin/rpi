@@ -1,132 +1,64 @@
-#!/usr/bin/expect
+#!/bin/sh
 
-proc env {name {default ""}} {
-  if {![info exists ::env($name)] || $::env($name) eq ""} {
-    return $default
-  }
+root=${RPI_ROOT:-/media/sd}
+boot=$root/boot/firmware
+cache=$root/var/cache
+share=/usr/local/share/rpi
+lib=/var/lib/rpi
 
-  return $::env($name)
-}
+ssh=$boot/ssh.txt
+userconf=$boot/userconf.txt
+bios=$share/bios.img
+kernel=$share/kernel.img
+locale=$lib/locale.img
 
-proc is_interactive {} {
-  return [expr {[catch {chan configure stdin -mode}] == 0}]
-}
-
-proc interact_or_expect args {
-  if {[is_interactive]} {
-    return [uplevel interact $args]
-  }
-
-  return [uplevel expect -timeout -1 [lmap arg {*}$args {
-    if {[lsearch -exact {-o -reset -nobuffer} $arg] > -1} {
-      continue
-    }
-
-    set arg
-  }]]
-}
-
-proc get_output {index type} {
-  upvar [expr {[is_interactive] ? "interact_out" : "expect_out"}] output
-
-  return $output($index,$type)
-}
-
-set root [env RPI_ROOT /media/sd]
-set boot $root/boot/firmware
-set cache $root/var/cache
-set config_ssh $boot/ssh.txt
-set config_user $boot/userconf.txt
-set bios /usr/local/share/rpi/bios.img
-set kernel /usr/local/share/rpi/kernel.img
-set locale /var/lib/rpi/locale.img
-
-set default_arch aarch64
-set default_cpu cortex-a72
-set default_port 22/tcp
-set default_ram 1G
-set default_smp 4
-set default_user pi
-set default_password raspberry
-set default_cmdline "
-  extends=$boot/cmdline.txt
-  console=ttyAMA0,115200
-  panic=-1
-  root=root
-  rootflags=cache=mmap,msize=512000,posixacl,trans=virtio,version=9p2000.L
-  rootfstype=9p
-  !rootwait
-  !fsck.repair
+default_arch=aarch64
+default_cpu=cortex-a72
+default_port=22/tcp
+default_ram=1G
+default_smp=4
+default_user=pi
+default_password=raspberry
+default_cmdline="\
+  extends=$boot/cmdline.txt \
+  console=ttyAMA0,115200 \
+  panic=-1 \
+  root=root \
+  rootflags=cache=mmap,msize=512000,posixacl,trans=virtio,version=9p2000.L \
+  rootfstype=9p \
+  !rootwait \
+  !fsck.repair \
 "
 
-set arch [env RPI_ARCH $::default_arch]
-set cmdline [string cat \
-  [join $default_cmdline " "] \
-  [if {$argc} {subst " init="}] \
-  [join [lmap arg $argv {string cat \" [string map {\" \"\"} $arg] \"}] " "]
-]
-set cpu [switch $arch {
-  arm {subst ""}
-  default {subst $default_cpu}
-}]
-set port [join [lmap port [list {*}[env RPI_PORT $default_port]] {
-  lassign [split [string trim $port] "/"] port protocol
-  subst ",hostfwd=$protocol\::$port-:$port"
-}] ""]
-set ram [env RPI_RAM $default_ram]
-set smp [env RPI_CPU $default_smp]
+arch=${RPI_ARCH:-$default_arch}
+cmdline="$(echo $default_cmdline)$([ "$#" -gt 0 ] && printf '%s\0' "$@" | sed 's/"/""/g' | xargs -0 printf ' "%s"' | sed 's/^ / init=/')"
+cpu=$([ "$arch" = "arm" ] && echo "" || echo "$default_cpu")
+port="$(echo "${RPI_PORT:-$default_port}" | sed -r 's/(^|\s+)(\d+)(\/(\w+))?(\s+$)?/,hostfwd=\4::\2-:\2/g')"
+ram=${RPI_RAM:-$default_ram}
+smp=${RPI_CPU:-$default_smp}
 
-if {![file exists $::config_ssh] && [string is true [env RPI_SSH true]]} {
-  exec touch $config_ssh
-}
+[[ "${RPI_SSH:-1}" =~ "^(1|true|TRUE)$" && ! -e $ssh ]] && \
+  touch $ssh
 
-if {![file exists $::config_user]} {
-  exec echo "[env RPI_USER $default_user]:[exec openssl passwd -1 -stdin <<[env RPI_PASSWORD $default_password]]" | tee $config_user >/dev/null
-}
+[ ! -e $userconf ] && \
+  echo "${RPI_USER:-$default_user}:$(echo "${RPI_PASSWORD:-raspberry}" | openssl passwd -1 -stdin)" | tee $userconf >/dev/null
 
-spawn -noecho qemu-system-$arch \
+exec qemu-system-$arch \
   -action panic=exit-failure \
   -machine virt \
   -nographic \
   -semihosting \
   -serial mon:stdio \
-  {*}[if {$cpu != ""} {subst "-cpu $cpu"}] \
+  ${cpu:+-cpu $cpu} \
   -m $ram \
   -smp $smp \
   -bios $bios \
   -device pvpanic-pci \
   -device virtio-net-device,netdev=net0 \
-  -drive file=$::locale,format=raw \
+  -drive file=$locale,format=raw \
   -kernel $kernel \
   -netdev user,id=net0$port \
   -virtfs local,id=boot,mount_tag=boot,multidevs=remap,path=$boot,security_model=none,writeout=immediate \
   -virtfs local,id=cache,mount_tag=cache,multidevs=remap,path=$cache,security_model=none,writeout=immediate \
   -virtfs local,id=root,mount_tag=root,multidevs=remap,path=$root,security_model=none,writeout=immediate \
-  -append $cmdline
-
-set panic_code 0
-
-match_max 1048576
-interact_or_expect {
-  -o -reset
-
-  -nobuffer -re {\[\s*[\d\.]+\]\s+Kernel panic - not syncing: Requested init .* failed \(error (-?\d+)\)\.} {
-    set panic_code [get_output 1 string]
-    expect eof
-    return
-  }
-
-  -nobuffer -re {\[\s*[\d\.]+\]\s+Kernel panic - not syncing: Attempted to kill init! exitcode=(0x[\da-f]+)[^\da-f]} {
-    set panic_code [expr [get_output 1 string]>>8]
-    expect eof
-    return
-  }
-}
-
-lassign [wait] pid spawn_id os_error code
-
-if {$panic_code != 0} {
-  set code $panic_code
-}
-
-exit $code
+  -append "$cmdline"

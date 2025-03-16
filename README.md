@@ -32,8 +32,6 @@ Compared to mounting a binary image, this filesystem significantly improves I/O 
 The image has a wrapper that restarts the virtual machine on reboot.
 On shutdown, the container is exited with a zero exit code.
 
-If the OS kernel throws a panic, the panic code will be returned.
-
 The reboot support without stopping the container simulates the `cmdline.txt` behavior.
 That means the file can be edited, and the Raspberry OS kernel should pick up the updated options after the next reboot, just like the normal Raspberry Pi OS.
 
@@ -55,12 +53,7 @@ docker run -it -p 2222:22 dokmic/rpi
 ### Custom Command
 To override the kernel init command, the `command` argument in the `run` command should be specified:
 ```bash
-docker run dokmic/rpi /bin/bash -c 'echo "hello world"'
-```
-
-The image's entry point will also handle and forward the init process' exit code:
-```bash
-docker run -it dokmic/rpi /bin/bash -c 'exit 123'; echo $?
+docker run dokmic/rpi init=/bin/bash -c 'echo "hello world"'
 ```
 
 ### Custom Parameters
