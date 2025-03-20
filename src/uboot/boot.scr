@@ -21,4 +21,8 @@ done
 setenv bootargs "$head $tail"
 
 # https://qemu-project.gitlab.io/qemu/system/arm/virt.html
-booti $kernel_addr_r - $fdt_addr
+if test "$cpu" = "armv7"; then
+  bootz $kernel_addr_r - $fdt_addr
+else
+  booti $kernel_addr_r - $fdt_addr
+fi

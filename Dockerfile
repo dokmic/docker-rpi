@@ -41,7 +41,7 @@ COPY src/kernel .
 FROM --platform=$BUILDPLATFORM builder AS kernel
 
 ARG kernel
-ENV defconfig ${aarch64:+bcm2711_defconfig}${arm:+bcm2711_defconfig}
+ENV defconfig ${aarch64:+bcm2711_defconfig}${arm:+bcm2709_defconfig}
 ENV image ${aarch64:+Image.gz}${arm:+zImage}
 ENV INSTALL_MOD_PATH /rootfs/media/sd/usr
 ENV INSTALL_MOD_STRIP 1

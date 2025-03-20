@@ -54,7 +54,7 @@ stub() {
   run rpi
 
   assert_line --index 0 --partial "qemu-system-arm"
-  refute_line --partial "-cpu"
+  assert_output --regexp "-cpu[[:space:]]+cortex-a7[[:space:]]"
 }
 
 @test "uses custom RAM size when specified" {

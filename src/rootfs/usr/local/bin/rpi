@@ -32,7 +32,7 @@ default_cmdline="\
 
 arch=${RPI_ARCH:-$default_arch}
 cmdline="$(echo $default_cmdline)$([ "$#" -gt 0 ] && printf '%s\0' "$@" | sed 's/"/""/g' | xargs -0 printf ' "%s"' | sed 's/^ / init=/')"
-cpu=$([ "$arch" = "arm" ] && echo "" || echo "$default_cpu")
+cpu=$([ "$arch" = "arm" ] && echo "cortex-a7" || echo "$default_cpu")
 port="$(echo "${RPI_PORT:-$default_port}" | sed -r 's/(^|\s+)(\d+)(\/(\w+))?(\s+$)?/,hostfwd=\4::\2-:\2/g')"
 ram=${RPI_RAM:-$default_ram}
 smp=${RPI_CPU:-$default_smp}
@@ -49,7 +49,7 @@ exec qemu-system-$arch \
   -nographic \
   -semihosting \
   -serial mon:stdio \
-  ${cpu:+-cpu $cpu} \
+  -cpu $cpu \
   -m $ram \
   -smp $smp \
   -bios $bios \
