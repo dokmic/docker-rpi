@@ -8,16 +8,27 @@ services:
         - uboot=$UBOOT
       entitlements:
         - security.insecure
+    configs:
+      - source: user-data
+        target: /media/sd/boot/firmware/user-data
     environment:
       - RPI_CPU
-      - RPI_PASSWORD
       - RPI_PORT
       - RPI_RAM
-      - RPI_SSH
-      - RPI_USER
     image: ${DOCKERHUB_REPOSITORY:-rpi}:latest
 
   bats:
     image: bats/bats:latest
     volumes:
       - .:/code
+
+configs:
+  user-data:
+    content: |
+      #cloud-config
+
+      enable_ssh: ${RPI_SSH:-false}
+      user:
+        lock_passwd: false
+        name: ${RPI_USER:-pi}
+        plain_text_passwd: ${RPI_PASSWORD:-raspberry}

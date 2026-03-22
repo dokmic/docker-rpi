@@ -19,7 +19,7 @@ Unlike others, this image is optimized to run inside a container with volumes su
 ### Motivation
 
 Sometimes, testing your work on the Raspberry Pi OS is much easier without running it on real hardware.
-Things like Ansible Playbooks or a Kubernetes cluster, in most cases, can be tested in a virtualized environment.
+Things like Ansible Playbooks, cloud-init configurations, or a Kubernetes cluster, in most cases, can be tested in a virtualized environment.
 
 There are plenty of tutorials and other Docker images running Raspberry Pi OS using QEMU, but all of them extract the OS image at runtime.
 Hence, they do not support mounting volumes to share the filesystem.
@@ -49,6 +49,23 @@ The container can be started using the [`run`](https://docs.docker.com/reference
 docker run -it dokmic/rpi
 ```
 
+Starting from the Trixie release, the default user should be unlocked using the cloud-init configuration:
+
+```yaml
+#cloud-config
+
+user:
+  lock_passwd: false
+  name: pi
+  plain_text_passwd: raspberry
+```
+
+And then, the `run` command would look something like that:
+
+```bash
+docker run -it -v ./user-data:/media/sd/boot/firmware/user-data:ro dokmic/rpi
+```
+
 After the boot, it should be possible to log in with the default user `pi` and password `raspberry`.
 
 ### SSH
@@ -56,7 +73,15 @@ After the boot, it should be possible to log in with the default user `pi` and p
 To access the SSH service, the related port should be forwarded to the host system:
 
 ```bash
-docker run -it -p 2222:22 dokmic/rpi
+docker run -it -p 2222:22 -e RPI_PORT=22/tcp dokmic/rpi
+```
+
+Additionally, the SSH server should be enabled via the cloud-init configuration:
+
+```yaml
+#cloud-config
+
+enable_ssh: true
 ```
 
 ### Custom Command
@@ -69,10 +94,10 @@ docker run dokmic/rpi /bin/bash -c 'echo "hello world"'
 
 ### Custom Parameters
 
-Some of the parameters can be customized via the environment variables (e.g., CPU, RAM, or user credentials):
+Some of the parameters can be customized via the environment variables (e.g., CPU or RAM):
 
 ```bash
-docker run -it -e RPI_USER=user -e RPI_PASSWORD=password dokmic/rpi
+docker run -it -e RPI_CPU=2 -e RPI_RAM=4G dokmic/rpi
 ```
 
 ### Shared Volumes
@@ -88,7 +113,7 @@ docker run -it -v .:/media/sd/root/app dokmic/rpi
 The container can be stopped using the [`kill`](https://docs.docker.com/reference/cli/docker/container/kill/) and [`stop`](https://docs.docker.com/reference/cli/docker/container/stop/) commands.
 
 Or within the container using power management commands, e.g.:
-```
+```bash
 sudo poweroff
 ```
 
@@ -99,16 +124,27 @@ It is also possible to create a service using Docker Compose:
 ```yaml
 services:
   rpi:
+    configs:
+      - source: user-data
+        target: /media/sd/boot/firmware/user-data
     environment:
       - RPI_CPU
-      - RPI_PASSWORD
       - RPI_PORT
       - RPI_RAM
-      - RPI_SSH
-      - RPI_USER
     image: dokmic/rpi:latest
     ports:
       - 2222:22
+
+configs:
+  user-data:
+    content: |
+      #cloud-config
+
+      enable_ssh: ${RPI_SSH:-false}
+      user:
+        lock_passwd: false
+        name: ${RPI_USER:-pi}
+        plain_text_passwd: ${RPI_PASSWORD:-raspberry}
 ```
 
 ## Parameters
@@ -118,9 +154,6 @@ Name | Default | Description
 `RPI_CPU` | `4` | The number of CPU cores.
 `RPI_RAM` | `1G` | The amount of available RAM.
 `RPI_PORT` | `22/tcp` | The space-separated set of ports forwarded inside the running container (e.g., `22/tcp 80/tcp 53/udp`).
-`RPI_SSH` | `true` | The boolean flag enables the SSH server.
-`RPI_USER` | `pi` | The predefined user.
-`RPI_PASSWORD` | `raspberry` | The predefined user password.
 
 ## Tags
 

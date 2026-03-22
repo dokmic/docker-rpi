@@ -6,8 +6,6 @@ cache=$root/var/cache
 share=/usr/local/share/rpi
 lib=/var/lib/rpi
 
-ssh=$boot/ssh.txt
-userconf=$boot/userconf.txt
 bios=$share/bios.img
 kernel=$share/kernel.img
 locale=$lib/locale.img
@@ -28,6 +26,7 @@ default_cmdline="\
   rootfstype=9p \
   !rootwait \
   !fsck.repair \
+  !resize \
 "
 
 arch=${RPI_ARCH:-$default_arch}
@@ -36,12 +35,6 @@ cpu=$([ "$arch" = "arm" ] && echo "cortex-a7" || echo "$default_cpu")
 port="$(echo "${RPI_PORT:-$default_port}" | sed -r 's/(^|\s+)(\d+)(\/(\w+))?(\s+$)?/,hostfwd=\4::\2-:\2/g')"
 ram=${RPI_RAM:-$default_ram}
 smp=${RPI_CPU:-$default_smp}
-
-[[ "${RPI_SSH:-1}" =~ "^(1|true|TRUE)$" && ! -e $ssh ]] && \
-  touch $ssh
-
-[ ! -e $userconf ] && \
-  echo "${RPI_USER:-$default_user}:$(echo "${RPI_PASSWORD:-raspberry}" | openssl passwd -1 -stdin)" | tee $userconf >/dev/null
 
 exec qemu-system-$arch \
   -action panic=exit-failure \

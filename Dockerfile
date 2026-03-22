@@ -129,8 +129,8 @@ RUN \
 EOF
 
 RUN rm \
-  /rootfs/media/sd/etc/init.d/resize2fs_once \
-  /rootfs/media/sd/etc/systemd/system/multi-user.target.wants/rpi-eeprom-update.service
+  /rootfs/media/sd/etc/systemd/system/multi-user.target.wants/rpi-eeprom-update.service \
+  /rootfs/media/sd/etc/systemd/system/sysinit.target.wants/rpi-resize.service
 
 FROM --platform=$BUILDPLATFORM scratch AS rootfs
 
@@ -145,9 +145,7 @@ ARG arch
 
 ENV RPI_ARCH=$arch
 
-RUN apk add --no-cache \
-  openssl \
-  qemu-system-$arch
+RUN apk add --no-cache qemu-system-$arch
 
 COPY --from=rootfs / /
 

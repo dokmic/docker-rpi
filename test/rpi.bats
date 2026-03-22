@@ -1,7 +1,6 @@
 #!/usr/bin/env bats
 
 bats_load_library bats-assert
-bats_load_library bats-file
 bats_load_library bats-support
 
 setup_file() {
@@ -83,31 +82,4 @@ stub() {
   run rpi /bin/bash -c "echo Test"
 
   assert_line --regexp "^extends=$RPI_ROOT/boot/firmware/cmdline.txt[[:space:]].*[[:space:]]init=\"/bin/bash\" \"-c\" \"echo Test\"[[:space:]]*$"
-}
-
-@test "uses the default user and password" {
-  run rpi
-
-  assert_file_contains "$BATS_TEST_TMPDIR/boot/firmware/userconf.txt" "pi:raspberry"
-}
-
-@test "uses custom user and password when specified" {
-  export RPI_USER=admin
-  export RPI_PASSWORD=something
-  run rpi
-
-  assert_file_contains "$BATS_TEST_TMPDIR/boot/firmware/userconf.txt" "admin:something"
-}
-
-@test "creates an SSH file by default" {
-  run rpi
-
-  assert_file_empty "$BATS_TEST_TMPDIR/boot/firmware/ssh.txt"
-}
-
-@test "does not create an SSH file when disabled" {
-  export RPI_SSH=0
-  run rpi
-
-  assert_file_not_exists "$BATS_TEST_TMPDIR/boot/firmware/ssh.txt"
 }
