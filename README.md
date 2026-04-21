@@ -35,10 +35,10 @@ Compared to mounting a binary image, this filesystem significantly improves I/O 
 
 ### Power Management Support
 
-The image has a wrapper that restarts the virtual machine on reboot.
-On shutdown, the container is exited with a zero exit code.
+The hypervisor automatically restarts the virtual machine on reboot.
+On shutdown, the container will be exited with a zero exit code.
 
-The reboot support without stopping the container simulates the `cmdline.txt` behavior.
+The image contains a boot-loader that reads `cmdline.txt` and sets the kernel command-line parameters.
 That means the file can be edited, and the Raspberry OS kernel should pick up the updated options after the next reboot, just like the normal Raspberry Pi OS.
 
 ## Usage
@@ -64,7 +64,7 @@ docker run -it -p 2222:22 dokmic/rpi
 To override the kernel init command, the `command` argument in the `run` command should be specified:
 
 ```bash
-docker run dokmic/rpi init=/bin/bash -c 'echo "hello world"'
+docker run dokmic/rpi /bin/bash -c 'echo "hello world"'
 ```
 
 ### Custom Parameters
